@@ -1,4 +1,4 @@
-import { ArrowRight, Clock, Users } from "lucide-react";
+import { ArrowRight, Clock, MessageCircle, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,7 +6,8 @@ import { Container, Section, SectionHeading } from "@/components/shared/containe
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { formatIDR } from "@/lib/utils";
+import { site } from "@/lib/site";
+import { formatIDR, waMeLink } from "@/lib/utils";
 
 export type PackageCard = {
   id: string;
@@ -22,7 +23,16 @@ export type PackageCard = {
 /** Dipakai kalau paket belum punya foto di package_galleries. */
 const FALLBACK_IMAGE = "/images/paket-kebun-teh.jpg";
 
-export function PackageList({ packages }: { packages: PackageCard[] }) {
+export function PackageList({
+  packages,
+  gagalMemuat = false,
+  petunjukPengembang = null,
+}: {
+  packages: PackageCard[];
+  /** True kalau daftar tidak bisa diambil, bukan karena memang kosong. */
+  gagalMemuat?: boolean;
+  petunjukPengembang?: string | null;
+}) {
   return (
     <Section id="paket">
       <Container>
@@ -32,7 +42,39 @@ export function PackageList({ packages }: { packages: PackageCard[] }) {
           description="Angka di bawah sudah termasuk Jeep, bahan bakar, driver, dan asuransi perjalanan. Tidak ada biaya tambahan yang muncul di akhir."
         />
 
-        {packages.length === 0 ? (
+        {gagalMemuat ? (
+          /* Dibedakan dari keadaan kosong. Menulis "paket belum tersedia"
+             padahal paketnya ada tetapi sistemnya sedang bermasalah akan
+             membuat calon pemesan pergi tanpa alasan. */
+          <Card className="mt-10 p-8 text-center">
+            <p className="font-semibold">Daftar paket gagal dimuat</p>
+            <p className="mx-auto mt-2 max-w-md text-meta text-muted-foreground">
+              Ini masalah di sisi kami, bukan di perangkat kamu. Paketnya tetap
+              ada dan tetap bisa dipesan. Coba muat ulang halaman, atau chat
+              kami lewat WhatsApp dan sebutkan tanggal serta jumlah orangnya.
+            </p>
+            <Button variant="outline" asChild className="mt-5">
+              <a
+                href={waMeLink(
+                  site.whatsapp,
+                  "Halo, saya mau pesan paket offroad tapi daftarnya tidak muncul di website.",
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <MessageCircle className="size-4" aria-hidden="true" />
+                Pesan lewat WhatsApp
+              </a>
+            </Button>
+
+            {petunjukPengembang ? (
+              <p className="mx-auto mt-6 max-w-lg rounded-[var(--radius-control)] bg-muted p-3 text-left text-legal text-muted-foreground">
+                <span className="font-semibold">Catatan pengembang: </span>
+                {petunjukPengembang}
+              </p>
+            ) : null}
+          </Card>
+        ) : packages.length === 0 ? (
           <Card className="mt-10 p-8 text-center">
             <p className="font-semibold">Paket belum tersedia</p>
             <p className="mt-2 text-meta text-muted-foreground">
