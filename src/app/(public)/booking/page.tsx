@@ -7,6 +7,7 @@ import { BookingForm } from "@/components/domain/booking-form";
 import { Container } from "@/components/shared/container";
 import { Alert } from "@/components/ui/alert";
 import { auth } from "@/lib/auth";
+import { catatKegagalanDatabase } from "@/lib/db/errors";
 import { getServerApi } from "@/server/caller";
 
 export const metadata: Metadata = {
@@ -34,12 +35,17 @@ export default async function BookingPage({ searchParams }: PageProps) {
     [];
   let loadFailed = false;
 
+  let petunjukPengembang: string | null = null;
+
   try {
     const options = await loadOptions();
     packages = options.packages;
     meetingPoints = options.meetingPoints;
-  } catch {
+  } catch (error) {
+    const diagnosis = catatKegagalanDatabase("booking", error);
     loadFailed = true;
+    petunjukPengembang =
+      process.env.NODE_ENV === "development" ? diagnosis.message : null;
   }
 
   const userPhone =
@@ -67,6 +73,11 @@ export default async function BookingPage({ searchParams }: PageProps) {
             <Alert tone="danger" title="Data paket gagal dimuat">
               Coba muat ulang halaman ini. Kalau masih gagal, hubungi kami lewat
               WhatsApp dan sebutkan paket yang kamu inginkan.
+              {petunjukPengembang ? (
+                <span className="mt-2 block text-legal">
+                  Catatan pengembang: {petunjukPengembang}
+                </span>
+              ) : null}
             </Alert>
           ) : (
             <BookingForm
