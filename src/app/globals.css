@@ -1,0 +1,125 @@
+@import "tailwindcss";
+
+/* =========================================================
+   Design tokens - PRD §14.3 (palet) & §14.4 (tipografi)
+   Palet alam offroad: hijau hutan sebagai primer, oranye
+   sebagai satu-satunya aksen CTA. Tidak ada gradien dekoratif.
+   ========================================================= */
+@theme {
+  --color-primary: #166534;
+  --color-primary-hover: #14532d;
+  --color-on-primary: #f0fdf4;
+  --color-secondary: #f97316;
+  --color-accent: #f97316;
+  --color-accent-hover: #ea580c;
+  --color-background: #fafafa;
+  --color-surface: #ffffff;
+  --color-foreground: #171717;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #52525b;
+  --color-border: #e4e4e7;
+  --color-destructive: #ef4444;
+  --color-destructive-soft: #fef2f2;
+  --color-success: #15803d;
+  --color-success-soft: #f0fdf4;
+  --color-warning: #b45309;
+  --color-warning-soft: #fffbeb;
+
+  --font-heading: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Skala tipografi PRD: 12 / 14 / 16 / 20 / 28 / 40 */
+  --text-legal: 0.75rem;
+  --text-legal--line-height: 1.5;
+  --text-meta: 0.875rem;
+  --text-meta--line-height: 1.5;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-title: 1.25rem;
+  --text-title--line-height: 1.4;
+  --text-section: 1.75rem;
+  --text-section--line-height: 1.25;
+  --text-hero: 2.5rem;
+  --text-hero--line-height: 1.1;
+
+  /* Radius besar untuk kesan ramah keluarga (PRD §14.2) */
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
+
+  /* Satu skala elevasi, bayangan sangat tipis */
+  --shadow-card: 0 1px 2px rgb(23 23 23 / 0.04), 0 1px 3px rgb(23 23 23 / 0.06);
+  --shadow-raised: 0 4px 12px rgb(23 23 23 / 0.08);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Palet PRD hanya mendefinisikan mode terang. Dikunci eksplisit supaya
+   kontrol form bawaan browser tidak dibalik otomatis jadi gelap dan
+   merusak rasio kontras yang sudah diverifikasi. */
+:root {
+  color-scheme: light;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    /* 16px minimum di mobile supaya iOS tidak auto-zoom saat fokus input */
+    font-size: var(--text-body);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-heading);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Fokus keyboard harus selalu terlihat (PRD §14.6 poin 9) */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Angka harga sejajar rapi, tidak bergeser saat nilainya berubah */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Leaflet: tile map tidak boleh menembus radius kartu */
+.leaflet-container {
+  border-radius: var(--radius-card);
+  font-family: var(--font-body);
+  z-index: 0;
+}

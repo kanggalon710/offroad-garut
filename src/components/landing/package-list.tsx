@@ -1,0 +1,111 @@
+import { ArrowRight, Clock, Users } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+
+import { Container, Section, SectionHeading } from "@/components/shared/container";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { formatIDR } from "@/lib/utils";
+
+export type PackageCard = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string | null;
+  durationHours: number;
+  pricePerPaxIdr: number;
+  minPax: number;
+  images: { imageUrl: string; alt: string | null }[];
+};
+
+/** Dipakai kalau paket belum punya foto di package_galleries. */
+const FALLBACK_IMAGE = "/images/paket-kebun-teh.jpg";
+
+export function PackageList({ packages }: { packages: PackageCard[] }) {
+  return (
+    <Section id="paket">
+      <Container>
+        <SectionHeading
+          eyebrow="Pilihan paket"
+          title="Harga per orang, ditulis apa adanya"
+          description="Angka di bawah sudah termasuk Jeep, bahan bakar, driver, dan asuransi perjalanan. Tidak ada biaya tambahan yang muncul di akhir."
+        />
+
+        {packages.length === 0 ? (
+          <Card className="mt-10 p-8 text-center">
+            <p className="font-semibold">Paket belum tersedia</p>
+            <p className="mt-2 text-meta text-muted-foreground">
+              Daftar paket sedang disiapkan. Sementara ini silakan tanya
+              langsung lewat WhatsApp, kami balas di jam operasional.
+            </p>
+          </Card>
+        ) : (
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {packages.map((pkg) => {
+              const cover = pkg.images[0];
+              return (
+                <Card
+                  key={pkg.id}
+                  className="flex flex-col overflow-hidden transition-shadow duration-200 hover:shadow-[var(--shadow-raised)]"
+                >
+                  <div className="relative aspect-[4/3] w-full bg-muted">
+                    <Image
+                      src={cover?.imageUrl ?? FALLBACK_IMAGE}
+                      alt={cover?.alt ?? `Suasana paket ${pkg.name}`}
+                      fill
+                      loading="lazy"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-cover"
+                    />
+                  </div>
+
+                  <div className="flex flex-1 flex-col p-5">
+                    <h3 className="text-title font-bold">{pkg.name}</h3>
+
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Badge tone="forest">
+                        <Clock className="size-3.5" aria-hidden="true" />
+                        {pkg.durationHours} jam
+                      </Badge>
+                      <Badge>
+                        <Users className="size-3.5" aria-hidden="true" />
+                        Min {pkg.minPax} orang
+                      </Badge>
+                    </div>
+
+                    {pkg.description ? (
+                      <p className="mt-3 line-clamp-3 text-meta text-muted-foreground">
+                        {pkg.description}
+                      </p>
+                    ) : null}
+
+                    <div className="mt-auto pt-5">
+                      <p className="text-legal text-muted-foreground">
+                        Mulai dari
+                      </p>
+                      <p className="tabular text-section font-extrabold text-primary">
+                        {formatIDR(pkg.pricePerPaxIdr)}
+                        <span className="text-meta font-medium text-muted-foreground">
+                          {" "}
+                          / orang
+                        </span>
+                      </p>
+
+                      <Button asChild className="mt-4 w-full">
+                        <Link href={`/paket/${pkg.slug}`}>
+                          Lihat detail
+                          <ArrowRight className="size-4" aria-hidden="true" />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </Container>
+    </Section>
+  );
+}
