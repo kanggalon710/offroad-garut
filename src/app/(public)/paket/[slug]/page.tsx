@@ -4,11 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { TRPCError } from "@trpc/server";
+
 import { MeetingMapLoader } from "@/components/domain/meeting-map-loader";
 import { Container } from "@/components/shared/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { catatKegagalanDatabase } from "@/lib/db/errors";
 import { site } from "@/lib/site";
 import { formatIDR } from "@/lib/utils";
 import { getServerApi } from "@/server/caller";
@@ -31,12 +34,23 @@ const notIncluded = [
 
 type PageProps = { params: Promise<{ slug: string }> };
 
+/**
+ * Mengembalikan null HANYA kalau paketnya memang tidak ada.
+ *
+ * Kegagalan lain (database mati, kredensial salah) sengaja dilempar
+ * kembali. Kalau semuanya diperlakukan sebagai tidak ditemukan, satu
+ * gangguan database akan membuat seluruh halaman paket membalas 404 ke
+ * mesin pencari, dan halaman yang sebenarnya sah bisa terdeindeks.
+ */
 async function loadPackage(slug: string) {
   try {
     const api = await getServerApi();
     return await api.booking.getPackageBySlug({ slug });
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof TRPCError && error.code === "NOT_FOUND") return null;
+
+    catatKegagalanDatabase("paket", error);
+    throw error;
   }
 }
 

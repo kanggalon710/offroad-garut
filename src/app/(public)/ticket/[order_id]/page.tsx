@@ -9,7 +9,10 @@ import { Container } from "@/components/shared/container";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { TRPCError } from "@trpc/server";
+
 import { BOOKING_STATUS_LABEL } from "@/lib/constants";
+import { catatKegagalanDatabase } from "@/lib/db/errors";
 import { formatIDR, formatJam, formatTanggal } from "@/lib/utils";
 import { getServerApi } from "@/server/caller";
 
@@ -43,8 +46,14 @@ export default async function TicketPage({ params }: PageProps) {
   let data: Awaited<ReturnType<typeof loadBooking>>;
   try {
     data = await loadBooking(orderId);
-  } catch {
-    notFound();
+  } catch (error) {
+    // Hanya pesanan yang benar benar tidak ada yang jadi 404. Gangguan
+    // database harus tetap 500, supaya pemilik tiket yang sah tidak
+    // diberi tahu bahwa pesanannya "tidak ditemukan".
+    if (error instanceof TRPCError && error.code === "NOT_FOUND") notFound();
+
+    catatKegagalanDatabase("tiket", error);
+    throw error;
   }
 
   const { booking, pkg, meetingPoint, payment } = data;
