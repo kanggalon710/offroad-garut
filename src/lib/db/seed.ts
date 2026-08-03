@@ -5,6 +5,9 @@
  * Aman diulang: setiap penyisipan memakai onConflictDoNothing, jadi
  * menjalankannya dua kali tidak menggandakan data.
  */
+// Wajib paling atas: memuat .env.local sebelum koneksi database dibuat.
+import "./load-env";
+
 import { eq } from "drizzle-orm";
 
 import { db } from "./index";
@@ -25,26 +28,35 @@ const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "pengelola@offroadgarut.id";
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "GarutOffroad2026";
 const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Asep Saepudin";
 
+const MEETING_POINT_NAME = "Basecamp Cikuray Adventure";
+
 async function seedMeetingPoints() {
+  /**
+   * Dicek berdasarkan nama, bukan lewat onConflictDoNothing.
+   * Tabel meeting_points tidak punya batasan unik (mengikuti DDL PRD §4),
+   * jadi tanpa pemeriksaan ini setiap kali seed dijalankan akan lahir
+   * satu titik kumpul kembar.
+   */
+  const [existing] = await db
+    .select({ id: meetingPoints.id })
+    .from(meetingPoints)
+    .where(eq(meetingPoints.name, MEETING_POINT_NAME))
+    .limit(1);
+
+  if (existing) return existing.id;
+
   const [point] = await db
     .insert(meetingPoints)
     .values({
-      name: "Basecamp Cikuray Adventure",
+      name: MEETING_POINT_NAME,
       address:
         "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
       location: { lng: 107.7891, lat: -7.3186 },
       isActive: true,
     })
-    .onConflictDoNothing()
     .returning();
 
-  if (point) return point.id;
-
-  const [existing] = await db
-    .select({ id: meetingPoints.id })
-    .from(meetingPoints)
-    .limit(1);
-  return existing?.id ?? null;
+  return point?.id ?? null;
 }
 
 const packageSeeds = [

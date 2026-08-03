@@ -124,6 +124,35 @@ src/
 Test memerlukan database yang sudah di-seed dan membaca `DATABASE_URL` dari
 `.env.local`. Panggilan ke Midtrans dan Fonnte di-stub; sisanya nyata.
 
+## Alur branch
+
+Tiga branch, mengalir satu arah:
+
+```text
+dev  ──►  deploy  ──►  main
+```
+
+| Branch | Peran | Aturan |
+|---|---|---|
+| `dev` | Tempat kerja sehari hari. Semua fitur dan perbaikan mendarat di sini lebih dulu. | Boleh sering berubah. |
+| `deploy` | Kandidat rilis. Isinya sama dengan yang akan naik ke produksi, dipakai untuk uji coba di lingkungan preview. | Hanya menerima merge dari `dev`. |
+| `main` | Yang benar benar berjalan di produksi. | Hanya menerima merge dari `deploy`. Jangan pernah commit langsung ke sini. |
+
+Naikkan satu tingkat:
+
+```bash
+git checkout deploy && git merge --no-ff dev && git push
+```
+
+```bash
+git checkout main && git merge --no-ff deploy && git push
+```
+
+CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build
+pada setiap push dan pull request ke ketiga branch. Test memerlukan database,
+jadi workflow menyalakan service container PostGIS lalu menerapkan migrasi dan
+seed sebelum menjalankannya.
+
 ## Deployment
 
 1. Push ke GitHub atau GitLab, sambungkan ke project Vercel.
