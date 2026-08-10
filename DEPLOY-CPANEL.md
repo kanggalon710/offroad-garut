@@ -114,8 +114,15 @@ Lalu jalankan migrasi dan isi data awal:
 
 ```bash
 node scripts/migrasi.cjs
-npm run db:seed
+node scripts/seed.mjs
 ```
+
+`node scripts/seed.mjs`, bukan `npm run db:seed`. Script `db:seed` memakai `tsx`,
+dan tsx juga memuat WebAssembly sehingga kena kegagalan memori yang sama dengan
+drizzle-kit. `scripts/seed.mjs` adalah hasil bundel esbuild dari
+`src/lib/db/seed.ts`: JavaScript biasa tanpa WASM, isinya persis sama. Kalau
+`src/lib/db/seed.ts` berubah, bundelnya dibuat ulang di laptop dengan
+`pnpm db:seed:bundle` lalu di-commit.
 
 **Jangan pakai `npm run db:push` di shared hosting.** drizzle-kit memuat parser
 berbasis WebAssembly yang gagal dialokasikan di bawah limit memori cPanel:
@@ -160,5 +167,5 @@ repo. Repo ini belum punya, jadi untuk sekarang pakai alur manual di atas.
 - Daftarkan Payment Notification URL di dashboard Midtrans ke endpoint webhook
   aplikasi.
 - Kalau database produksi masih kosong, jalankan langkah 4 di atas
-  (`node scripts/migrasi.cjs` lalu `npm run db:seed`).
+  (`node scripts/migrasi.cjs` lalu `node scripts/seed.mjs`).
 - Cek `https://demo1.jabnet.id/api/health` untuk memastikan aplikasi hidup.

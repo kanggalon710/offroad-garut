@@ -9,6 +9,8 @@ export default tseslint.config(
       ".next/**",
       "node_modules/**",
       "drizzle/**",
+      // Bundel hasil generate, bukan sumber yang ditulis tangan
+      "scripts/seed.mjs",
       "next-env.d.ts",
     ],
   },
