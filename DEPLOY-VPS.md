@@ -2,8 +2,17 @@
 
 Live: `https://demo1.jabnet.id` di `160.236.19.22` (Ubuntu 22.04, 8 GB RAM).
 
-Server ini juga menjalankan OoklaServer di port 5060 dan 8080. Tidak ada
-bentrokan: aplikasi memakai 3000 di localhost, dan nginx memakai 80 dan 443.
+Server ini dipakai bersama. Jangan anggap satu penghuni saja:
+
+| Penghuni | Port | Catatan |
+| --- | --- | --- |
+| offroad-garut (dokumen ini) | 3000 | `https://demo1.jabnet.id` |
+| kavae-footwear | 3001 | `https://demo2.jabnet.id`, systemd `kavae-footwear`, database `kavae_demo`, env `/etc/kavae-footwear.env` |
+| OoklaServer (speedtest) | 5060, 8080 | sudah ada sebelumnya, tidak diusik |
+| nginx | 80, 443 | satu vhost per domain di `sites-available` |
+
+Karena itu jangan menghapus `sites-enabled/default` pengganti, mematikan nginx,
+atau menyetel `default_server` tanpa memeriksa vhost tetangga.
 
 ## Kenapa bukan cPanel
 
