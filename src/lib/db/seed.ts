@@ -8,13 +8,10 @@
 // Wajib paling atas: memuat .env.local sebelum koneksi database dibuat.
 import "./load-env";
 
-import { randomUUID } from "node:crypto";
-
 import { eq } from "drizzle-orm";
 
 import { db } from "./index";
 import {
-  accounts,
   jeeps,
   meetingPoints,
   packageGalleries,
@@ -48,18 +45,18 @@ async function seedMeetingPoints() {
 
   if (existing) return existing.id;
 
-  // MySQL tidak punya RETURNING, jadi id dibuat lebih dulu di sini.
-  const id = randomUUID();
-  await db.insert(meetingPoints).values({
-    id,
-    name: MEETING_POINT_NAME,
-    address: "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
-    latitude: -7.3186,
-    longitude: 107.7891,
-    isActive: true,
-  });
+  const [point] = await db
+    .insert(meetingPoints)
+    .values({
+      name: MEETING_POINT_NAME,
+      address:
+        "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
+      location: { lng: 107.7891, lat: -7.3186 },
+      isActive: true,
+    })
+    .returning();
 
-  return id;
+  return point?.id ?? null;
 }
 
 const packageSeeds = [
@@ -103,35 +100,25 @@ const packageSeeds = [
 
 async function seedPackages() {
   for (const seed of packageSeeds) {
-    /**
-     * MySQL tidak punya onConflictDoNothing yang mengembalikan baris,
-     * jadi keberadaannya diperiksa lewat slug (kolom unik) lebih dulu.
-     * Ini juga yang menjaga galeri tidak berlipat setiap kali seed
-     * dijalankan ulang.
-     */
-    const [existing] = await db
-      .select({ id: packages.id })
-      .from(packages)
-      .where(eq(packages.slug, seed.slug))
-      .limit(1);
+    const [inserted] = await db
+      .insert(packages)
+      .values({
+        name: seed.name,
+        slug: seed.slug,
+        description: seed.description,
+        durationHours: seed.durationHours,
+        pricePerPaxIdr: seed.pricePerPaxIdr,
+        minPax: seed.minPax,
+        maxPax: seed.maxPax,
+        isActive: true,
+      })
+      .onConflictDoNothing()
+      .returning();
 
-    if (existing) continue;
-
-    const packageId = randomUUID();
-    await db.insert(packages).values({
-      id: packageId,
-      name: seed.name,
-      slug: seed.slug,
-      description: seed.description,
-      durationHours: seed.durationHours,
-      pricePerPaxIdr: seed.pricePerPaxIdr,
-      minPax: seed.minPax,
-      maxPax: seed.maxPax,
-      isActive: true,
-    });
+    if (!inserted) continue;
 
     await db.insert(packageGalleries).values({
-      packageId,
+      packageId: inserted.id,
       imageUrl: seed.image,
       alt: seed.alt,
       isPrimary: true,
@@ -149,32 +136,13 @@ const jeepSeeds = [
 ];
 
 async function seedJeeps() {
-  const terpasang = await db
-    .select({ plateNumber: jeeps.plateNumber })
-    .from(jeeps);
-  const sudahAda = new Set(terpasang.map((unit) => unit.plateNumber));
-
-  const baru = jeepSeeds.filter((unit) => !sudahAda.has(unit.plateNumber));
-  if (baru.length === 0) return;
-
-  await db.insert(jeeps).values(baru);
+  await db.insert(jeeps).values(jeepSeeds).onConflictDoNothing();
 }
 
 /**
- * Akun pengelola dibuat dengan menulis langsung ke tabel, tetapi kata
- * sandinya di-hash memakai `hashPassword` milik better-auth sendiri.
- * Jadi hasilnya identik dengan yang dibuat lewat `auth.api.signUpEmail`
- * dan tetap bisa diverifikasi saat login.
- *
- * `auth.api.signUpEmail` sengaja tidak dipakai karena memicu `fetch`,
- * dan `fetch` bawaan Node memuat parser HTTP berbentuk WebAssembly.
- * Di shared hosting dengan limit memori ketat, itu gagal dialokasikan:
- * "WebAssembly.instantiate(): Out of memory". Penyemaian tidak boleh
- * bergantung pada jaringan hanya untuk membuat satu baris.
- *
- * Bentuk barisnya mengikuti apa yang better-auth hasilkan: satu baris
- * `users`, dan satu baris `accounts` dengan provider_id "credential"
- * serta account_id yang sama dengan id user.
+ * Akun pengelola dibuat lewat API better-auth, bukan INSERT langsung,
+ * supaya kata sandinya di-hash dengan algoritma yang sama dengan yang
+ * dipakai saat login.
  */
 async function seedAdmin() {
   const [existing] = await db
@@ -192,25 +160,19 @@ async function seedAdmin() {
     return;
   }
 
-  const { hashPassword } = await import("better-auth/crypto");
-  const userId = randomUUID();
-
-  await db.insert(users).values({
-    id: userId,
-    email: ADMIN_EMAIL,
-    name: ADMIN_NAME,
-    emailVerified: true,
-    role: "owner",
-    phone: "+6281234567890",
+  const { auth } = await import("@/lib/auth");
+  await auth.api.signUpEmail({
+    body: {
+      email: ADMIN_EMAIL,
+      password: ADMIN_PASSWORD,
+      name: ADMIN_NAME,
+    },
   });
 
-  await db.insert(accounts).values({
-    id: randomUUID(),
-    userId,
-    accountId: userId,
-    providerId: "credential",
-    password: await hashPassword(ADMIN_PASSWORD),
-  });
+  await db
+    .update(users)
+    .set({ role: "owner", emailVerified: true, phone: "+6281234567890" })
+    .where(eq(users.email, ADMIN_EMAIL));
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);
   if (!process.env.SEED_ADMIN_PASSWORD) {

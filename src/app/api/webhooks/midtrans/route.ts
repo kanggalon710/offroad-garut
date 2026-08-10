@@ -74,14 +74,7 @@ export async function POST(request: Request) {
         .innerJoin(packages, eq(packages.id, bookings.packageId))
         .leftJoin(meetingPoints, eq(meetingPoints.id, bookings.meetingPointId))
         .where(eq(bookings.bookingCode, payload.order_id))
-        /**
-         * MySQL tidak menerima `FOR UPDATE OF <tabel>` lewat drizzle,
-         * jadi kuncinya mengenai seluruh tabel dalam join, bukan hanya
-         * bookings. Lebih luas dari yang dibutuhkan, tetapi packages dan
-         * meeting_points nyaris tidak pernah ditulis saat webhook masuk
-         * sehingga tidak menambah risiko kemacetan yang berarti.
-         */
-        .for("update")
+        .for("update", { of: bookings })
         .limit(1);
 
       if (!row) return { kind: "not-found" as const };

@@ -9,8 +9,6 @@ export default tseslint.config(
       ".next/**",
       "node_modules/**",
       "drizzle/**",
-      // Bundel hasil generate, bukan sumber yang ditulis tangan
-      "scripts/seed.mjs",
       "next-env.d.ts",
     ],
   },
@@ -31,19 +29,6 @@ export default tseslint.config(
         "error",
         { prefer: "type-imports", fixStyle: "inline-type-imports" },
       ],
-    },
-  },
-
-  {
-    /**
-     * Skrip operasional dijalankan langsung oleh `node` di server, tanpa
-     * kompilasi. Ekstensinya .cjs karena package.json memakai
-     * "type": "module", dan berkas .cjs memang wajib memakai require().
-     */
-    files: ["scripts/**/*.cjs"],
-    rules: {
-      "@typescript-eslint/no-require-imports": "off",
-      "no-console": "off",
     },
   },
 

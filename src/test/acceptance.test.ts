@@ -6,8 +6,6 @@
  * Hanya panggilan keluar (Midtrans, Fonnte) yang di-stub, karena
  * keduanya butuh kredensial berbayar.
  */
-import { randomUUID } from "node:crypto";
-
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -69,35 +67,25 @@ function tanggalDepan(offsetHari: number): string {
 }
 
 beforeAll(async () => {
-  // MySQL tidak punya RETURNING, jadi id dibuat lebih dulu lalu barisnya
-  // dibaca kembali agar bentuk datanya sama dengan hasil query lain.
-  const budiId = randomUUID();
-  await db.insert(users).values({
-    id: budiId,
-    email: `budi.uji.${Date.now()}@contoh.id`,
-    name: "Budi Santoso",
-    emailVerified: true,
-    role: "customer",
-  });
   const [budi] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, budiId))
-    .limit(1);
+    .insert(users)
+    .values({
+      email: `budi.uji.${Date.now()}@contoh.id`,
+      name: "Budi Santoso",
+      emailVerified: true,
+      role: "customer",
+    })
+    .returning();
 
-  const sitiId = randomUUID();
-  await db.insert(users).values({
-    id: sitiId,
-    email: `siti.uji.${Date.now()}@contoh.id`,
-    name: "Siti Rahayu",
-    emailVerified: true,
-    role: "customer",
-  });
   const [siti] = await db
-    .select()
-    .from(users)
-    .where(eq(users.id, sitiId))
-    .limit(1);
+    .insert(users)
+    .values({
+      email: `siti.uji.${Date.now()}@contoh.id`,
+      name: "Siti Rahayu",
+      emailVerified: true,
+      role: "customer",
+    })
+    .returning();
 
   const [owner] = await db
     .select()

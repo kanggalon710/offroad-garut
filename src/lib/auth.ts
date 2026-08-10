@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
@@ -27,17 +25,16 @@ export const auth = betterAuth({
       : ["http://localhost:*", "http://127.0.0.1:*"],
 
   database: drizzleAdapter(db, {
-    provider: "mysql",
+    provider: "pg",
     schema: { users, sessions, accounts, verifications },
   }),
 
   advanced: {
     database: {
-      // MySQL tidak punya gen_random_uuid(), dan DEFAULT (UUID()) baru
-      // ada di versi baru sehingga tidak aman diandalkan di hosting
-      // bersama. Id dibuat di aplikasi supaya bentuknya tetap UUID v4
-      // seperti yang diasumsikan validasi z.string().uuid() di router.
-      generateId: () => randomUUID(),
+      // Biarkan Postgres yang membuat id lewat gen_random_uuid().
+      // Generator id bawaan better-auth menghasilkan string non-uuid
+      // yang ditolak kolom bertipe uuid.
+      generateId: false,
     },
   },
 

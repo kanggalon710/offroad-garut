@@ -26,7 +26,7 @@ export type DatabaseDiagnosis = {
 };
 
 /** Nilai contoh di .env.example yang sering lupa diganti. */
-const PLACEHOLDER = ["user:password", "dbname", "ganti_"];
+const PLACEHOLDER = ["hostname.neon.tech", "user:password", "dbname"];
 
 function penyebabTerdalam(error: unknown): unknown {
   let current = error;
@@ -84,38 +84,44 @@ export function diagnosaDatabase(error: unknown): DatabaseDiagnosis {
       return {
         issue: "koneksi-ditolak",
         message:
-          "Server database menolak koneksi. Pastikan MySQL berjalan dan portnya sesuai dengan DATABASE_URL.",
+          "Server database menolak koneksi. Pastikan Postgres berjalan dan portnya sesuai dengan DATABASE_URL.",
         konfigurasi: true,
       };
     case "ETIMEDOUT":
     case "ECONNRESET":
-    case "PROTOCOL_CONNECTION_LOST":
       return {
         issue: "waktu-habis",
         message:
-          "Koneksi ke database terputus atau kehabisan waktu. Periksa apakah server database masih menerima koneksi baru.",
+          "Koneksi ke database kehabisan waktu. Kalau memakai Neon, instansnya mungkin sedang bangun dari auto-pause. Coba lagi sebentar.",
         konfigurasi: false,
       };
-    case "ER_ACCESS_DENIED_ERROR":
-    case "ER_DBACCESS_DENIED_ERROR":
+    case "28P01":
+    case "28000":
       return {
         issue: "kredensial-salah",
         message:
-          "Nama pengguna atau kata sandi di DATABASE_URL ditolak server database. Kalau kata sandinya memuat @ atau :, pastikan sudah di-encode (@ menjadi %40).",
+          "Nama pengguna atau kata sandi di DATABASE_URL ditolak server database.",
         konfigurasi: true,
       };
-    case "ER_BAD_DB_ERROR":
+    case "3D000":
       return {
         issue: "database-tidak-ada",
         message:
           "Database yang disebut di DATABASE_URL tidak ada. Buat dulu databasenya, lalu jalankan migrasi.",
         konfigurasi: true,
       };
-    case "ER_NO_SUCH_TABLE":
+    case "42P01":
       return {
         issue: "skema-belum-dimigrasi",
         message:
-          "Tabelnya belum ada. Terapkan drizzle/0000_init.sql ke database, misalnya lewat `node scripts/migrasi.cjs`.",
+          "Tabelnya belum ada. Jalankan `pnpm db:generate` lalu terapkan drizzle/0000_init.sql ke database.",
+        konfigurasi: true,
+      };
+    case "42883":
+      return {
+        issue: "skema-belum-dimigrasi",
+        message:
+          "Fungsi PostGIS tidak ditemukan. Aktifkan ekstensinya dengan `CREATE EXTENSION postgis;`.",
         konfigurasi: true,
       };
     default:
