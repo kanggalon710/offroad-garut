@@ -14,6 +14,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "./index";
 import {
+  accounts,
   jeeps,
   meetingPoints,
   packageGalleries,
@@ -160,9 +161,20 @@ async function seedJeeps() {
 }
 
 /**
- * Akun pengelola dibuat lewat API better-auth, bukan INSERT langsung,
- * supaya kata sandinya di-hash dengan algoritma yang sama dengan yang
- * dipakai saat login.
+ * Akun pengelola dibuat dengan menulis langsung ke tabel, tetapi kata
+ * sandinya di-hash memakai `hashPassword` milik better-auth sendiri.
+ * Jadi hasilnya identik dengan yang dibuat lewat `auth.api.signUpEmail`
+ * dan tetap bisa diverifikasi saat login.
+ *
+ * `auth.api.signUpEmail` sengaja tidak dipakai karena memicu `fetch`,
+ * dan `fetch` bawaan Node memuat parser HTTP berbentuk WebAssembly.
+ * Di shared hosting dengan limit memori ketat, itu gagal dialokasikan:
+ * "WebAssembly.instantiate(): Out of memory". Penyemaian tidak boleh
+ * bergantung pada jaringan hanya untuk membuat satu baris.
+ *
+ * Bentuk barisnya mengikuti apa yang better-auth hasilkan: satu baris
+ * `users`, dan satu baris `accounts` dengan provider_id "credential"
+ * serta account_id yang sama dengan id user.
  */
 async function seedAdmin() {
   const [existing] = await db
@@ -180,19 +192,25 @@ async function seedAdmin() {
     return;
   }
 
-  const { auth } = await import("@/lib/auth");
-  await auth.api.signUpEmail({
-    body: {
-      email: ADMIN_EMAIL,
-      password: ADMIN_PASSWORD,
-      name: ADMIN_NAME,
-    },
+  const { hashPassword } = await import("better-auth/crypto");
+  const userId = randomUUID();
+
+  await db.insert(users).values({
+    id: userId,
+    email: ADMIN_EMAIL,
+    name: ADMIN_NAME,
+    emailVerified: true,
+    role: "owner",
+    phone: "+6281234567890",
   });
 
-  await db
-    .update(users)
-    .set({ role: "owner", emailVerified: true, phone: "+6281234567890" })
-    .where(eq(users.email, ADMIN_EMAIL));
+  await db.insert(accounts).values({
+    id: randomUUID(),
+    userId,
+    accountId: userId,
+    providerId: "credential",
+    password: await hashPassword(ADMIN_PASSWORD),
+  });
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);
   if (!process.env.SEED_ADMIN_PASSWORD) {
