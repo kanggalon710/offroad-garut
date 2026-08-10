@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, exists, inArray, ne, sql, sum } from "drizzle-orm";
 import { z } from "zod";
@@ -254,10 +256,15 @@ export const adminRouter = router({
           });
         }
 
-        const [allocation] = await tx
+        // MySQL tidak punya RETURNING, jadi id dibuat lebih dulu di sini.
+        const allocationId = randomUUID();
+        await tx
           .insert(bookingAllocations)
-          .values({ bookingId: booking.id, jeepId: input.jeepId })
-          .returning();
+          .values({
+            id: allocationId,
+            bookingId: booking.id,
+            jeepId: input.jeepId,
+          });
 
         await tx
           .update(bookings)
@@ -281,7 +288,7 @@ export const adminRouter = router({
 
         return {
           success: true as const,
-          allocationId: allocation?.id ?? null,
+          allocationId,
           jeepPlate: jeep.plateNumber,
         };
       });
@@ -292,10 +299,17 @@ export const adminRouter = router({
     .input(z.object({ bookingId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
+        // MySQL tidak punya RETURNING pada DELETE. Barisnya dibaca dulu
+        // supaya jejak auditnya tetap mencatat armada mana yang dilepas.
+        // Keduanya dalam satu transaksi, jadi tidak ada celah balapan.
         const dilepas = await tx
+          .select({ jeepId: bookingAllocations.jeepId })
+          .from(bookingAllocations)
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
+
+        await tx
           .delete(bookingAllocations)
-          .where(eq(bookingAllocations.bookingId, input.bookingId))
-          .returning({ jeepId: bookingAllocations.jeepId });
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
 
         await tx
           .update(bookings)

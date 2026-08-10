@@ -14,7 +14,7 @@ disengaja terhadap PRD dicatat di [DEVIASI-PRD.md](DEVIASI-PRD.md).
 | Framework | Next.js 15 (App Router, React 19) |
 | Styling | Tailwind CSS v4, komponen bergaya shadcn/ui |
 | API | tRPC v11 |
-| Database | PostgreSQL + PostGIS, Drizzle ORM |
+| Database | MySQL / MariaDB, Drizzle ORM |
 | Auth | Better-auth (Google OAuth untuk turis, email + password untuk pengelola) |
 | Pembayaran | Midtrans Snap v3 |
 | Notifikasi | Fonnte (WhatsApp) |
@@ -31,21 +31,20 @@ pnpm install
 cp .env.example .env.local
 ```
 
-Isi minimal `DATABASE_URL`. Database harus punya ekstensi PostGIS:
+Isi minimal `DATABASE_URL`. Kata sandi yang memuat `@` wajib di-encode menjadi
+`%40`, kalau tidak parser URI membaca bagian setelahnya sebagai nama host.
+
+Periksa koneksinya:
 
 ```bash
-psql -d nama_database -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+node scripts/cek-db.cjs
 ```
 
-Terapkan skema. `drizzle-kit push` meminta konfirmasi interaktif kalau database
-sudah berisi tabel PostGIS, jadi jalur migrasi lebih dapat diandalkan:
+Terapkan skema. `drizzle-kit push` butuh memori besar dan gagal di hosting
+bersama, jadi migrasi dijalankan langsung lewat driver:
 
 ```bash
-pnpm db:generate
-```
-
-```bash
-psql -d nama_database -f drizzle/0000_init.sql
+node scripts/migrasi.cjs
 ```
 
 Isi data awal (3 paket, 1 titik kumpul, 5 unit Jeep, satu akun pengelola):
@@ -150,7 +149,7 @@ git checkout main && git merge --no-ff deploy && git push
 
 CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build
 pada setiap push dan pull request ke ketiga branch. Test memerlukan database,
-jadi workflow menyalakan service container PostGIS lalu menerapkan migrasi dan
+jadi workflow menyalakan service container MySQL lalu menerapkan migrasi dan
 seed sebelum menjalankannya.
 
 ## Deployment
@@ -161,7 +160,7 @@ seed sebelum menjalankannya.
    sudah terisi sebelum build dijalankan**, karena nilainya ditanam ke dalam
    bundel saat kompilasi. Kalau `NEXT_PUBLIC_APP_URL` kosong saat build,
    `metadataBase` dan tautan Open Graph akan menunjuk ke `localhost`.
-3. Pastikan database produksi sudah mengaktifkan ekstensi `postgis`.
+3. Terapkan migrasi ke database produksi dengan `node scripts/migrasi.cjs`.
 4. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
 5. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
    di Google Cloud Console.

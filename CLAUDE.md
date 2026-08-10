@@ -8,7 +8,8 @@ Admin (pemilik lokal) butuh notif cepat (WA/Fonnte) dan manajemen alokasi Jeep.
 
 - **Frontend**: Next.js 15 App Router, React Server Components (SEO first), Tailwind CSS v4, komponen bergaya shadcn/ui.
 - **Backend/State**: tRPC v11 di Next.js Route Handler. Zustand disiapkan tapi belum diperlukan: kalkulator booking cukup pakai state lokal satu komponen.
-- **Database**: PostgreSQL (Neon) + PostGIS, Drizzle ORM.
+- **Database**: MySQL / MariaDB (cPanel), Drizzle ORM. Menggantikan PostgreSQL + PostGIS,
+  lihat DEVIASI-PRD.md poin 12.
 - **Auth**: Better-auth (Google OAuth untuk turis, email + password untuk pengelola).
 - **3rd Party**: Midtrans Snap, Fonnte WA, Leaflet, Cloudflare R2.
 
@@ -38,6 +39,10 @@ Semua tercatat di `DEVIASI-PRD.md`. Ringkasnya:
 3. `drizzle-orm` dinaikkan ke 0.45.x. Better-auth 1.6 menolak 0.36.x.
 4. `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` ditambahkan. snap.js membacanya di browser.
 5. Kolom `bookings.contact_name` dan `contact_phone` ditambahkan sebagai snapshot kontak untuk Fonnte.
+6. Database dipindah ke MySQL. PostgreSQL di cPanel target versi 10.23 tanpa PostGIS
+   maupun pgcrypto, jadi `geography(Point, 4326)` dan `gen_random_uuid()` mustahil.
+   Id menjadi `varchar(36)` yang digenerate aplikasi, koordinat menjadi dua kolom
+   `double`, dan `.returning()` diganti id yang dibuat lebih dulu.
 
 # Perintah
 
@@ -45,6 +50,7 @@ Semua tercatat di `DEVIASI-PRD.md`. Ringkasnya:
 pnpm dev          # server pengembangan
 pnpm typecheck    # wajib 0 error sebelum commit
 pnpm build        # wajib sukses sebelum deploy
-pnpm db:push      # sinkronisasi skema ke database
+pnpm db:generate  # buat ulang drizzle/0000_init.sql dari skema
+node scripts/migrasi.cjs  # terapkan migrasi (pengganti db:push di hosting kecil)
 pnpm db:seed      # isi paket, titik kumpul, armada, akun pengelola
 ```

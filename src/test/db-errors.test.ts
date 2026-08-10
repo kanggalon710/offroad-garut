@@ -4,12 +4,12 @@ import { diagnosaDatabase } from "@/lib/db/errors";
 
 const asli = process.env.DATABASE_URL;
 
-/** Meniru bentuk error yang dilempar driver pg. */
-function errorPg(code: string, message = "gagal"): Error {
+/** Meniru bentuk error yang dilempar driver mysql2. */
+function errorMysql(code: string, message = "gagal"): Error {
   return Object.assign(new Error(message), { code });
 }
 
-/** Meniru DrizzleQueryError yang membungkus error pg di properti cause. */
+/** Meniru DrizzleQueryError yang membungkus error driver di properti cause. */
 function errorDrizzle(penyebab: Error): Error {
   return new Error(
     'Failed query: select "id" from "packages" where ...\nparams: true,6',
@@ -18,7 +18,7 @@ function errorDrizzle(penyebab: Error): Error {
 }
 
 beforeEach(() => {
-  process.env.DATABASE_URL = "postgres://nyata@db.contoh.id:5432/offroad";
+  process.env.DATABASE_URL = "mysql://nyata@db.contoh.id:3306/offroad";
 });
 
 afterEach(() => {
@@ -28,10 +28,9 @@ afterEach(() => {
 
 describe("diagnosa kegagalan database", () => {
   it("mengenali DATABASE_URL yang masih berisi contoh dari .env.example", () => {
-    process.env.DATABASE_URL =
-      "postgres://user:password@hostname.neon.tech/dbname?sslmode=require";
+    process.env.DATABASE_URL = "mysql://user:password@localhost:3306/dbname";
 
-    const hasil = diagnosaDatabase(errorPg("ENOTFOUND"));
+    const hasil = diagnosaDatabase(errorMysql("ENOTFOUND"));
 
     expect(hasil.issue).toBe("belum-dikonfigurasi");
     expect(hasil.konfigurasi).toBe(true);
@@ -50,40 +49,47 @@ describe("diagnosa kegagalan database", () => {
   it("menembus bungkus Drizzle untuk menemukan kode error aslinya", () => {
     // Inilah bentuk yang benar benar muncul di layar: pesan Drizzle
     // berisi SQL panjang, sedangkan sebabnya tersembunyi di cause.
-    const hasil = diagnosaDatabase(errorDrizzle(errorPg("ENOTFOUND")));
+    const hasil = diagnosaDatabase(errorDrizzle(errorMysql("ENOTFOUND")));
 
     expect(hasil.issue).toBe("host-tidak-ditemukan");
     expect(hasil.message).not.toMatch(/select/i);
   });
 
   it("membedakan koneksi ditolak dari host tidak ditemukan", () => {
-    expect(diagnosaDatabase(errorPg("ECONNREFUSED")).issue).toBe(
+    expect(diagnosaDatabase(errorMysql("ECONNREFUSED")).issue).toBe(
       "koneksi-ditolak",
     );
-    expect(diagnosaDatabase(errorPg("ENOTFOUND")).issue).toBe(
+    expect(diagnosaDatabase(errorMysql("ENOTFOUND")).issue).toBe(
       "host-tidak-ditemukan",
     );
   });
 
   it("mengenali kredensial yang ditolak", () => {
-    const hasil = diagnosaDatabase(errorDrizzle(errorPg("28P01")));
+    const hasil = diagnosaDatabase(errorDrizzle(errorMysql("ER_ACCESS_DENIED_ERROR")));
     expect(hasil.issue).toBe("kredensial-salah");
     expect(hasil.konfigurasi).toBe(true);
   });
 
+  it("menyebut encoding kata sandi saat kredensial ditolak", () => {
+    // Kata sandi cPanel kerap memuat @, dan tanpa %40 parser URI membaca
+    // bagian setelahnya sebagai host. Gejalanya persis kredensial salah.
+    const hasil = diagnosaDatabase(errorMysql("ER_ACCESS_DENIED_ERROR"));
+    expect(hasil.message).toMatch(/%40/);
+  });
+
+  it("mengenali database yang belum dibuat", () => {
+    const hasil = diagnosaDatabase(errorDrizzle(errorMysql("ER_BAD_DB_ERROR")));
+    expect(hasil.issue).toBe("database-tidak-ada");
+  });
+
   it("mengenali skema yang belum dimigrasi", () => {
-    const hasil = diagnosaDatabase(errorDrizzle(errorPg("42P01")));
+    const hasil = diagnosaDatabase(errorDrizzle(errorMysql("ER_NO_SUCH_TABLE")));
     expect(hasil.issue).toBe("skema-belum-dimigrasi");
-    expect(hasil.message).toMatch(/db:generate/);
+    expect(hasil.message).toMatch(/migrasi\.cjs/);
   });
 
-  it("mengenali ekstensi PostGIS yang belum aktif", () => {
-    const hasil = diagnosaDatabase(errorDrizzle(errorPg("42883")));
-    expect(hasil.message).toMatch(/postgis/i);
-  });
-
-  it("menandai auto-pause Neon sebagai gangguan sementara, bukan salah konfigurasi", () => {
-    const hasil = diagnosaDatabase(errorPg("ETIMEDOUT"));
+  it("menandai koneksi terputus sebagai gangguan sementara, bukan salah konfigurasi", () => {
+    const hasil = diagnosaDatabase(errorMysql("ETIMEDOUT"));
     expect(hasil.issue).toBe("waktu-habis");
     expect(hasil.konfigurasi).toBe(false);
   });

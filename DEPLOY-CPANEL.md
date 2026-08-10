@@ -44,51 +44,71 @@ Dua catatan yang gampang bikin gagal:
 - Variabel `NEXT_PUBLIC_*` dibaca saat **build**, bukan saat runtime. Setiap kali
   nilainya berubah, aplikasi harus di-build ulang, bukan sekadar restart.
 - Env dari panel cPanel hanya masuk ke proses Passenger, tidak otomatis ke sesi
-  Terminal. Supaya `npm run build` melihat nilai yang sama, buat juga file
-  `.env.production` di root aplikasi (file ini sudah di-gitignore).
+  Terminal. Script database (`scripts/cek-db.cjs`, `scripts/migrasi.cjs`,
+  `db:seed`) membaca `process.env`, jadi buat juga file `.env.production` di root
+  aplikasi lalu muat dengan `set -a && . ./.env.production && set +a`. File itu
+  sudah di-gitignore.
+- Karena build dijalankan di laptop (lihat langkah 3), nilai `NEXT_PUBLIC_*` yang
+  dipakai saat build harus nilai produksi, bukan nilai lokal.
 
-## 3. Build pertama kali
+## 3. Build (dilakukan di lokal, bukan di server)
 
-Di Terminal cPanel, aktifkan environment Node milik aplikasi (perintah
-`source .../bin/activate` disalin dari kotak "Enter to the virtual environment"
-di halaman aplikasi):
+**Aplikasi ini tidak bisa di-build di server cPanel.** Limit memori akunnya
+terlalu kecil untuk mengalokasikan WebAssembly, dan kegagalannya muncul di
+drizzle-kit, tsx, maupun `next build` sendiri:
+
+```
+RangeError: WebAssembly.instantiate(): Out of memory:
+Cannot allocate Wasm memory for new instance
+```
+
+Passenger hanya menjalankan `server.js`, dan itu tidak butuh proses build. Jadi
+`.next/` dibuat di laptop lalu diunggah.
+
+Di server, pasang dependensinya saja:
 
 ```bash
 source /home/USERNAME/nodevenv/repositories/offroad-garut/22/bin/activate
 cd /home/USERNAME/repositories/offroad-garut
-npm install
-npm run build
+npm install --include=dev
 ```
 
-Lalu klik **Restart** di panel aplikasi Node.js.
+`--include=dev` wajib. Panel cPanel menyetel `NODE_ENV=production` dan npm
+melewatkan devDependencies kalau itu terbaca, padahal Tailwind dan TypeScript
+ada di sana.
 
-Catatan:
+Di laptop, build dengan nilai environment produksi (bukan nilai lokal, karena
+`NEXT_PUBLIC_*` ditanam ke bundel saat kompilasi):
 
-- Repo ini memakai pnpm, tapi cPanel biasanya hanya menyediakan npm. `npm install`
-  tetap jalan (lockfile pnpm diabaikan). Kalau mau persis: `npm install -g pnpm`
-  lalu `pnpm install --frozen-lockfile`.
-- Kalau `npm run build` kena OOM karena limit memori shared hosting, build di
-  lokal lalu upload folder `.next/` dan `node_modules/` ke server.
+```bash
+pnpm install
+pnpm build
+```
+
+Lalu unggah folder `.next/` ke `/home/USERNAME/repositories/offroad-garut/.next/`
+lewat File Manager atau rsync, dan klik **Restart** di panel Node.js.
 
 ## 4. Siapkan database
 
-Muat kredensial ke sesi Terminal dulu (drizzle-kit dan script bantu membaca
-`process.env`, bukan `.env.production`):
+Database yang dipakai adalah **MySQL cPanel**, bukan PostgreSQL. Alasannya
+tercatat di `DEVIASI-PRD.md` poin 12: PostgreSQL di server ini versi 10.23 tanpa
+PostGIS maupun pgcrypto, sehingga skema aslinya tidak bisa dibuat.
+
+Di cPanel > MySQL Databases, pastikan user sudah ditambahkan ke database dengan
+ALL PRIVILEGES. Membuat database dan user saja tidak cukup.
+
+Muat kredensial ke sesi Terminal dulu (script bantu membaca `process.env`,
+bukan `.env.production`):
 
 ```bash
 set -a && . ./.env.production && set +a
 ```
 
-Periksa koneksi dan ekstensi:
+Periksa koneksi dan versi server:
 
 ```bash
 node scripts/cek-db.cjs
 ```
-
-PostGIS wajib AKTIF. Tabel titik kumpul memakai kolom
-`geography(Point, 4326)`, jadi tanpa ekstensi itu migrasi pasti gagal. Di shared
-hosting, `create extension postgis` sering ditolak karena butuh hak superuser
-dan paketnya belum terpasang di server. Kalau begitu, hubungi admin server.
 
 Lalu jalankan migrasi dan isi data awal:
 
@@ -106,27 +126,27 @@ Cannot allocate Wasm memory for new instance
 ```
 
 `scripts/migrasi.cjs` menjalankan `drizzle/0000_init.sql` apa adanya lewat driver
-`pg`, tanpa parser, jadi lolos dari batasan itu. Script ini aman diulang: objek
-yang sudah ada dilewati.
+`mysql2`, tanpa parser, jadi lolos dari batasan itu. Script ini aman diulang:
+tabel, indeks, dan constraint yang sudah ada dilewati.
 
 Catatan soal password: kalau password database mengandung `@` (atau `:`, `/`,
 `?`, `#`), nilainya harus di-encode di connection URI. `Galon@12345` ditulis
-`Galon%4012345`. Tanpa itu parser membaca bagian setelah `@` sebagai host.
+`Galon%4012345`. Tanpa itu parser membaca bagian setelah `@` sebagai host, dan
+gejalanya terlihat seperti kredensial salah.
+
+Contoh `DATABASE_URL` untuk MySQL cPanel:
+
+```
+DATABASE_URL="mysql://jabnet_crm_user:Galon%4012345@localhost:3306/jabnet_offroad_demo"
+```
 
 ## 5. Update berikutnya
 
-Di cPanel > Git Version Control, klik **Update from Remote** untuk menarik commit
-baru di branch `deploy`. Itu hanya menarik kode, tidak mem-build. Setelah itu di
-Terminal:
-
-```bash
-source /home/USERNAME/nodevenv/repositories/offroad-garut/22/bin/activate
-cd /home/USERNAME/repositories/offroad-garut
-npm install
-npm run build
-```
-
-Lalu Restart aplikasi dari panel Node.js.
+1. Di cPanel > Git Version Control, klik **Update from Remote**. Ini hanya
+   menarik kode, tidak mem-build.
+2. Kalau ada dependensi baru, di Terminal server: `npm install --include=dev`.
+3. Di laptop: `pnpm build`, lalu unggah ulang folder `.next/`.
+4. **Restart** aplikasi dari panel Node.js.
 
 Tombol **Deploy HEAD Commit** baru muncul kalau ada file `.cpanel.yml` di root
 repo. Repo ini belum punya, jadi untuk sekarang pakai alur manual di atas.

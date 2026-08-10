@@ -8,6 +8,8 @@
 // Wajib paling atas: memuat .env.local sebelum koneksi database dibuat.
 import "./load-env";
 
+import { randomUUID } from "node:crypto";
+
 import { eq } from "drizzle-orm";
 
 import { db } from "./index";
@@ -45,18 +47,18 @@ async function seedMeetingPoints() {
 
   if (existing) return existing.id;
 
-  const [point] = await db
-    .insert(meetingPoints)
-    .values({
-      name: MEETING_POINT_NAME,
-      address:
-        "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
-      location: { lng: 107.7891, lat: -7.3186 },
-      isActive: true,
-    })
-    .returning();
+  // MySQL tidak punya RETURNING, jadi id dibuat lebih dulu di sini.
+  const id = randomUUID();
+  await db.insert(meetingPoints).values({
+    id,
+    name: MEETING_POINT_NAME,
+    address: "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
+    latitude: -7.3186,
+    longitude: 107.7891,
+    isActive: true,
+  });
 
-  return point?.id ?? null;
+  return id;
 }
 
 const packageSeeds = [
@@ -100,25 +102,35 @@ const packageSeeds = [
 
 async function seedPackages() {
   for (const seed of packageSeeds) {
-    const [inserted] = await db
-      .insert(packages)
-      .values({
-        name: seed.name,
-        slug: seed.slug,
-        description: seed.description,
-        durationHours: seed.durationHours,
-        pricePerPaxIdr: seed.pricePerPaxIdr,
-        minPax: seed.minPax,
-        maxPax: seed.maxPax,
-        isActive: true,
-      })
-      .onConflictDoNothing()
-      .returning();
+    /**
+     * MySQL tidak punya onConflictDoNothing yang mengembalikan baris,
+     * jadi keberadaannya diperiksa lewat slug (kolom unik) lebih dulu.
+     * Ini juga yang menjaga galeri tidak berlipat setiap kali seed
+     * dijalankan ulang.
+     */
+    const [existing] = await db
+      .select({ id: packages.id })
+      .from(packages)
+      .where(eq(packages.slug, seed.slug))
+      .limit(1);
 
-    if (!inserted) continue;
+    if (existing) continue;
+
+    const packageId = randomUUID();
+    await db.insert(packages).values({
+      id: packageId,
+      name: seed.name,
+      slug: seed.slug,
+      description: seed.description,
+      durationHours: seed.durationHours,
+      pricePerPaxIdr: seed.pricePerPaxIdr,
+      minPax: seed.minPax,
+      maxPax: seed.maxPax,
+      isActive: true,
+    });
 
     await db.insert(packageGalleries).values({
-      packageId: inserted.id,
+      packageId,
       imageUrl: seed.image,
       alt: seed.alt,
       isPrimary: true,
@@ -136,7 +148,15 @@ const jeepSeeds = [
 ];
 
 async function seedJeeps() {
-  await db.insert(jeeps).values(jeepSeeds).onConflictDoNothing();
+  const terpasang = await db
+    .select({ plateNumber: jeeps.plateNumber })
+    .from(jeeps);
+  const sudahAda = new Set(terpasang.map((unit) => unit.plateNumber));
+
+  const baru = jeepSeeds.filter((unit) => !sudahAda.has(unit.plateNumber));
+  if (baru.length === 0) return;
+
+  await db.insert(jeeps).values(baru);
 }
 
 /**

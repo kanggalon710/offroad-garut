@@ -33,6 +33,19 @@ export default tseslint.config(
   },
 
   {
+    /**
+     * Skrip operasional dijalankan langsung oleh `node` di server, tanpa
+     * kompilasi. Ekstensinya .cjs karena package.json memakai
+     * "type": "module", dan berkas .cjs memang wajib memakai require().
+     */
+    files: ["scripts/**/*.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+      "no-console": "off",
+    },
+  },
+
+  {
     files: ["src/test/**/*.{ts,tsx}", "src/lib/db/seed.ts"],
     rules: {
       // Skrip seed dan test memang berbicara ke terminal

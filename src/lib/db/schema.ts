@@ -1,70 +1,65 @@
+import { randomUUID } from "node:crypto";
+
 import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
-  customType,
   date,
+  datetime,
+  double,
   index,
-  integer,
-  jsonb,
-  pgTable,
+  int,
+  json,
+  mysqlTable,
   text,
   time,
-  timestamp,
   uniqueIndex,
-  uuid,
   varchar,
-} from "drizzle-orm/pg-core";
+} from "drizzle-orm/mysql-core";
 
 /* =========================================================
-   PostGIS geography(Point, 4326)
-   Drizzle belum punya tipe `geography` bawaan, jadi dipetakan
-   manual. Ditulis sebagai EWKT, dibaca kembali sebagai EWKB hex
-   (format keluaran default PostGIS lewat driver pg).
+   Catatan dialek MySQL
+
+   1. Tidak ada tipe `uuid`. Id disimpan sebagai varchar(36)
+      berisi UUID v4 standar, digenerate di aplikasi lewat
+      randomUUID(). MySQL 5.7 dan MariaDB lawas tidak punya
+      DEFAULT (UUID()), jadi membebankannya ke database akan
+      menutup pilihan hosting tanpa alasan kuat.
+   2. Tidak ada PostGIS. Koordinat titik kumpul disimpan sebagai
+      dua kolom double biasa. Aplikasi tidak pernah melakukan
+      query jarak, jadi tipe spasial tidak memberi manfaat.
+   3. DATETIME dipakai, bukan TIMESTAMP. TIMESTAMP di MySQL
+      berhenti di tahun 2038 dan itu terlalu dekat untuk kolom
+      seperti expires_at.
    ========================================================= */
+
+/** Koordinat titik kumpul. Dipisah jadi dua kolom di MySQL. */
 export type GeoPoint = { lng: number; lat: number };
 
-function parseEwkbPoint(hex: string): GeoPoint {
-  const bytes = Buffer.from(hex, "hex");
-  const littleEndian = bytes.readUInt8(0) === 1;
-  const rawType = littleEndian ? bytes.readUInt32LE(1) : bytes.readUInt32BE(1);
-  // bit 0x20000000 menandakan SRID ikut disertakan di depan koordinat
-  const hasSrid = (rawType & 0x20000000) !== 0;
-  const offset = hasSrid ? 9 : 5;
-  const lng = littleEndian
-    ? bytes.readDoubleLE(offset)
-    : bytes.readDoubleBE(offset);
-  const lat = littleEndian
-    ? bytes.readDoubleLE(offset + 8)
-    : bytes.readDoubleBE(offset + 8);
-  return { lng, lat };
-}
+/** Id UUID v4 yang digenerate aplikasi. */
+const idPrimary = () =>
+  varchar("id", { length: 36 })
+    .primaryKey()
+    .$defaultFn(() => randomUUID());
 
-/**
- * Dituliskan tanpa typmod. drizzle-kit selalu membungkus tipe kustom
- * dengan tanda kutip, dan `"geography(Point, 4326)"` bukan identifier
- * yang sah sehingga migrasinya gagal. `"geography"` justru cocok karena
- * nama tipe PostGIS memang huruf kecil semua. Batasan Point dan SRID
- * 4326 ditegakkan lewat check constraint di tabel meeting_points.
- */
-const geographyPoint = customType<{ data: GeoPoint; driverData: string }>({
-  dataType() {
-    return "geography";
-  },
-  toDriver(value) {
-    return `SRID=4326;POINT(${value.lng} ${value.lat})`;
-  },
-  fromDriver(value) {
-    return parseEwkbPoint(value);
-  },
-});
+const idReference = (nama: string) => varchar(nama, { length: 36 });
+
+const dibuatPada = () =>
+  datetime("created_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`);
+
+const diubahPada = () =>
+  datetime("updated_at")
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`);
 
 /* ========================= users ========================= */
 
-export const users = pgTable(
+export const users = mysqlTable(
   "users",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     email: varchar("email", { length: 255 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
     /**
@@ -82,34 +77,43 @@ export const users = pgTable(
     passwordHash: varchar("password_hash", { length: 255 }),
     role: varchar("role", { length: 20 }).notNull().default("customer"),
     avatarUrl: varchar("avatar_url", { length: 1024 }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
+    deletedAt: datetime("deleted_at"),
   },
   (table) => [
-    index("idx_active_users")
-      .on(table.email)
-      .where(sql`${table.deletedAt} is null`),
-    check("users_role_check", sql`${table.role} in ('customer','admin','owner')`),
-    check("users_phone_check", sql`${table.phone} is null or ${table.phone} like '+62%'`),
+    /**
+     * Di PostgreSQL indeks ini partial (`where deleted_at is null`).
+     * MySQL tidak mengenal partial index, jadi dipasang penuh. Efeknya
+     * hanya indeksnya sedikit lebih besar.
+     */
+    index("idx_active_users").on(table.email),
+    check(
+      "users_role_check",
+      sql`${table.role} in ('customer','admin','owner')`,
+    ),
+    check(
+      "users_phone_check",
+      sql`${table.phone} is null or ${table.phone} like '+62%'`,
+    ),
   ],
 );
 
 /* ======================== sessions ======================= */
 
-export const sessions = pgTable(
+export const sessions = mysqlTable(
   "sessions",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    id: idPrimary(),
+    userId: idReference("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     sessionToken: varchar("session_token", { length: 255 }).notNull().unique(),
-    expiresAt: timestamp("expires_at").notNull(),
+    expiresAt: datetime("expires_at").notNull(),
     ipAddress: varchar("ip_address", { length: 64 }),
     userAgent: text("user_agent"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
   },
   (table) => [index("idx_sessions_user_id").on(table.userId)],
 );
@@ -119,11 +123,11 @@ export const sessions = pgTable(
    menyimpan token OAuth Google dan hash password admin.
    ========================================================= */
 
-export const accounts = pgTable(
+export const accounts = mysqlTable(
   "accounts",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: uuid("user_id")
+    id: idPrimary(),
+    userId: idReference("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     accountId: varchar("account_id", { length: 255 }).notNull(),
@@ -131,12 +135,12 @@ export const accounts = pgTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    accessTokenExpiresAt: datetime("access_token_expires_at"),
+    refreshTokenExpiresAt: datetime("refresh_token_expires_at"),
     scope: text("scope"),
     password: text("password"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
   },
   (table) => [
     index("idx_accounts_user_id").on(table.userId),
@@ -144,101 +148,107 @@ export const accounts = pgTable(
   ],
 );
 
-export const verifications = pgTable(
+export const verifications = mysqlTable(
   "verifications",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     identifier: varchar("identifier", { length: 255 }).notNull(),
     value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    expiresAt: datetime("expires_at").notNull(),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
   },
   (table) => [index("idx_verifications_identifier").on(table.identifier)],
 );
 
 /* ===================== meeting_points ==================== */
 
-export const meetingPoints = pgTable(
+export const meetingPoints = mysqlTable(
   "meeting_points",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     name: varchar("name", { length: 255 }).notNull(),
     address: text("address"),
-    location: geographyPoint("location").notNull(),
+    /** Pengganti geography(Point, 4326). Lihat catatan dialek di atas. */
+    latitude: double("latitude").notNull(),
+    longitude: double("longitude").notNull(),
     isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
+    deletedAt: datetime("deleted_at"),
   },
   (table) => [
-    index("idx_meeting_points_location").using("gist", table.location),
+    index("idx_meeting_points_location").on(table.latitude, table.longitude),
     check(
-      "meeting_points_location_check",
-      sql`geometrytype(${table.location}::geometry) = 'POINT' and st_srid(${table.location}::geometry) = 4326`,
+      "meeting_points_latitude_check",
+      sql`${table.latitude} between -90 and 90`,
+    ),
+    check(
+      "meeting_points_longitude_check",
+      sql`${table.longitude} between -180 and 180`,
     ),
   ],
 );
 
 /* ======================== packages ======================= */
 
-export const packages = pgTable(
+export const packages = mysqlTable(
   "packages",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     name: varchar("name", { length: 255 }).notNull().unique(),
     slug: varchar("slug", { length: 255 }).notNull().unique(),
     description: text("description"),
-    durationHours: integer("duration_hours").notNull().default(3),
-    pricePerPaxIdr: integer("price_per_pax_idr").notNull(),
-    minPax: integer("min_pax").notNull().default(3),
-    maxPax: integer("max_pax").notNull().default(100),
+    durationHours: int("duration_hours").notNull().default(3),
+    pricePerPaxIdr: int("price_per_pax_idr").notNull(),
+    minPax: int("min_pax").notNull().default(3),
+    maxPax: int("max_pax").notNull().default(100),
     isActive: boolean("is_active").notNull().default(true),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
+    deletedAt: datetime("deleted_at"),
   },
   (table) => [
-    index("idx_packages_search").using(
-      "gin",
-      sql`to_tsvector('indonesian', ${table.name} || ' ' || coalesce(${table.description}, ''))`,
-    ),
+    /**
+     * Di PostgreSQL ini indeks GIN atas to_tsvector('indonesian', ...).
+     * Tidak ada padanannya di MySQL, dan aplikasi memang belum punya
+     * fitur pencarian teks, jadi cukup indeks biasa atas nama paket.
+     */
+    index("idx_packages_search").on(table.name),
     check("packages_price_check", sql`${table.pricePerPaxIdr} > 0`),
     check("packages_min_pax_check", sql`${table.minPax} >= 3`),
   ],
 );
 
-export const packageGalleries = pgTable(
+export const packageGalleries = mysqlTable(
   "package_galleries",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    packageId: uuid("package_id")
+    id: idPrimary(),
+    packageId: idReference("package_id")
       .notNull()
       .references(() => packages.id, { onDelete: "cascade" }),
     imageUrl: varchar("image_url", { length: 1024 }).notNull(),
     alt: varchar("alt", { length: 255 }),
     isPrimary: boolean("is_primary").notNull().default(false),
-    sortOrder: integer("sort_order").notNull().default(0),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    sortOrder: int("sort_order").notNull().default(0),
+    createdAt: dibuatPada(),
   },
-  (table) => [
-    index("idx_package_galleries_package_id").on(table.packageId),
-  ],
+  (table) => [index("idx_package_galleries_package_id").on(table.packageId)],
 );
 
 /* ========================= jeeps ========================= */
 
-export const jeeps = pgTable(
+export const jeeps = mysqlTable(
   "jeeps",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     plateNumber: varchar("plate_number", { length: 20 }).notNull().unique(),
     name: varchar("name", { length: 100 }).notNull(),
-    capacity: integer("capacity").notNull().default(4),
+    capacity: int("capacity").notNull().default(4),
     status: varchar("status", { length: 20 }).notNull().default("active"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
+    deletedAt: datetime("deleted_at"),
   },
   (table) => [
     check("jeeps_capacity_check", sql`${table.capacity} > 0`),
@@ -251,35 +261,35 @@ export const jeeps = pgTable(
 
 /* ======================== bookings ======================= */
 
-export const bookings = pgTable(
+export const bookings = mysqlTable(
   "bookings",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     bookingCode: varchar("booking_code", { length: 50 }).notNull().unique(),
-    userId: uuid("user_id")
+    userId: idReference("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
-    packageId: uuid("package_id")
+    packageId: idReference("package_id")
       .notNull()
       .references(() => packages.id, { onDelete: "restrict" }),
-    meetingPointId: uuid("meeting_point_id").references(
+    meetingPointId: idReference("meeting_point_id").references(
       () => meetingPoints.id,
       { onDelete: "set null" },
     ),
-    bookingDate: date("booking_date").notNull(),
+    bookingDate: date("booking_date", { mode: "string" }).notNull(),
     timeSlot: time("time_slot").notNull(),
-    paxCount: integer("pax_count").notNull(),
-    totalIdr: integer("total_idr").notNull(),
+    paxCount: int("pax_count").notNull(),
+    totalIdr: int("total_idr").notNull(),
     status: varchar("status", { length: 20 }).notNull().default("pending"),
     /** Nomor & nama kontak snapshot saat booking, dipakai Fonnte. */
     contactName: varchar("contact_name", { length: 255 }).notNull(),
     contactPhone: varchar("contact_phone", { length: 20 }).notNull(),
     specialRequests: text("special_requests"),
     qrCodeUrl: varchar("qr_code_url", { length: 1024 }),
-    checkInAt: timestamp("check_in_at"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
-    deletedAt: timestamp("deleted_at"),
+    checkInAt: datetime("check_in_at"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
+    deletedAt: datetime("deleted_at"),
   },
   (table) => [
     index("idx_bookings_user_id").on(table.userId),
@@ -297,17 +307,17 @@ export const bookings = pgTable(
 
 /* =================== booking_allocations ================= */
 
-export const bookingAllocations = pgTable(
+export const bookingAllocations = mysqlTable(
   "booking_allocations",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    bookingId: uuid("booking_id")
+    id: idPrimary(),
+    bookingId: idReference("booking_id")
       .notNull()
       .references(() => bookings.id, { onDelete: "cascade" }),
-    jeepId: uuid("jeep_id")
+    jeepId: idReference("jeep_id")
       .notNull()
       .references(() => jeeps.id, { onDelete: "restrict" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: dibuatPada(),
   },
   (table) => [
     index("idx_booking_allocations_booking_id").on(table.bookingId),
@@ -321,22 +331,22 @@ export const bookingAllocations = pgTable(
 
 /* ======================== payments ======================= */
 
-export const payments = pgTable(
+export const payments = mysqlTable(
   "payments",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
-    bookingId: uuid("booking_id")
+    id: idPrimary(),
+    bookingId: idReference("booking_id")
       .notNull()
       .references(() => bookings.id, { onDelete: "cascade" }),
     midtransTransactionId: varchar("midtrans_transaction_id", {
       length: 255,
     }).unique(),
-    amountIdr: integer("amount_idr").notNull(),
+    amountIdr: int("amount_idr").notNull(),
     paymentMethod: varchar("payment_method", { length: 50 }),
     status: varchar("status", { length: 20 }).notNull().default("pending"),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    metadata: json("metadata"),
+    createdAt: dibuatPada(),
+    updatedAt: diubahPada(),
   },
   (table) => [
     index("idx_payments_booking_id").on(table.bookingId),
@@ -351,19 +361,19 @@ export const payments = pgTable(
 
 /* ======================= audit_logs ====================== */
 
-export const auditLogs = pgTable(
+export const auditLogs = mysqlTable(
   "audit_logs",
   {
-    id: uuid("id").primaryKey().defaultRandom(),
+    id: idPrimary(),
     tableName: varchar("table_name", { length: 100 }).notNull(),
-    recordId: uuid("record_id").notNull(),
+    recordId: varchar("record_id", { length: 36 }).notNull(),
     action: varchar("action", { length: 20 }).notNull(),
-    oldData: jsonb("old_data"),
-    newData: jsonb("new_data"),
-    changedBy: uuid("changed_by").references(() => users.id, {
+    oldData: json("old_data"),
+    newData: json("new_data"),
+    changedBy: idReference("changed_by").references(() => users.id, {
       onDelete: "set null",
     }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: dibuatPada(),
   },
   (table) => [
     check(

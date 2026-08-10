@@ -1,6 +1,8 @@
+import { randomUUID } from "node:crypto";
+
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, isNull, notExists, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias } from "drizzle-orm/mysql-core";
 import { z } from "zod";
 
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
@@ -181,36 +183,32 @@ export const bookingRouter = router({
       const totalIdr = pkg.pricePerPaxIdr * input.paxCount;
       const bookingCode = generateBookingCode();
 
-      const hasil = await ctx.db.transaction(async (tx) => {
-        const [booking] = await tx
-          .insert(bookings)
-          .values({
-            bookingCode,
-            userId: ctx.user.id,
-            packageId: pkg.id,
-            meetingPointId: input.meetingPointId,
-            bookingDate: input.bookingDate,
-            timeSlot: input.timeSlot,
-            paxCount: input.paxCount,
-            totalIdr,
-            status: "awaiting_payment",
-            contactName: input.contactName,
-            contactPhone: phone,
-            specialRequests: input.specialRequests ?? null,
-          })
-          .returning();
+      // MySQL tidak punya RETURNING, jadi id dibuat lebih dulu di sini
+      // supaya baris payments bisa langsung merujuknya tanpa SELECT
+      // tambahan di dalam transaksi.
+      const bookingId = randomUUID();
 
-        if (!booking) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Pesanan gagal disimpan",
-          });
-        }
+      const hasil = await ctx.db.transaction(async (tx) => {
+        await tx.insert(bookings).values({
+          id: bookingId,
+          bookingCode,
+          userId: ctx.user.id,
+          packageId: pkg.id,
+          meetingPointId: input.meetingPointId,
+          bookingDate: input.bookingDate,
+          timeSlot: input.timeSlot,
+          paxCount: input.paxCount,
+          totalIdr,
+          status: "awaiting_payment",
+          contactName: input.contactName,
+          contactPhone: phone,
+          specialRequests: input.specialRequests ?? null,
+        });
 
         // Kalau Midtrans menolak, exception di bawah membatalkan
         // seluruh transaksi: tidak ada pesanan tanpa jalur bayar.
         const snap = await createSnapTransaction({
-          orderId: booking.bookingCode,
+          orderId: bookingCode,
           grossAmount: totalIdr,
           customer: {
             name: input.contactName,
@@ -225,14 +223,14 @@ export const bookingRouter = router({
               name: pkg.name,
             },
           ],
-          finishUrl: `${process.env.NEXT_PUBLIC_APP_URL}/ticket/${booking.bookingCode}`,
+          finishUrl: `${process.env.NEXT_PUBLIC_APP_URL}/ticket/${bookingCode}`,
         });
 
         // Token disimpan supaya tombol "Lanjutkan Pembayaran" di halaman
         // E-Ticket bisa memakai ulang transaksi yang sama. Membuat
         // transaksi baru akan ditolak Midtrans karena order_id kembar.
         await tx.insert(payments).values({
-          bookingId: booking.id,
+          bookingId,
           amountIdr: totalIdr,
           status: "pending",
           metadata: {
@@ -242,7 +240,7 @@ export const bookingRouter = router({
         });
 
         return {
-          bookingCode: booking.bookingCode,
+          bookingCode,
           totalIdr,
           snapToken: snap.token,
           snapRedirectUrl: snap.redirectUrl,
