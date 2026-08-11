@@ -36,8 +36,9 @@ export default async function MasukPage({ searchParams }: PageProps) {
       <Card className="w-full max-w-sm p-6">
         <h1 className="text-title font-bold">Masuk dulu sebentar</h1>
         <p className="mt-2 text-meta text-muted-foreground">
-          Kami butuh akun Google kamu untuk mengirim tiket dan menyimpan
-          riwayat pesanan. Tidak ada password baru yang perlu dibuat.
+          Gunakan akun Google kamu untuk masuk instan, atau buat akun
+          baru dengan email dan kata sandi. Kami butuh ini untuk mengirim tiket
+          dan menyimpan riwayat pesanan.
         </p>
 
         <div className="mt-6">

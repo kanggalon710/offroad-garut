@@ -1,0 +1,23 @@
+---
+description: Standar pengembangan wajib untuk semua perubahan kode di repo ini
+alwaysApply: true
+---
+
+Baca sampai habis sebelum membuat atau mengubah kode apa pun, termasuk perubahan satu
+baris:
+
+1. `~/.ai/AGENTS.md` (standar universal: minta spesifikasi sebelum membangun, cek skill,
+   reusable component, DRY, semantic HTML, responsif, performa, keamanan, batas server dan
+   client, type safety, protokol file state, checklist penyelesaian).
+2. `AGENTS.md` di root repo ini (aturan khusus project).
+
+Untuk pekerjaan non-trivial, baca juga `.ai/TODO.md` dan entri terbaru `.ai/PROGRESS.md`
+sebelum mulai, lalu perbarui keduanya sebelum menyatakan selesai.
+
+Jangan jadi yes-man. Untuk halaman baru, fitur baru, perubahan skema database, atau apa pun
+yang menyentuh lebih dari sekitar tiga file, berhenti dan minta spesifikasi dulu. Jawab
+checklist di bagian 15 file pertama satu per satu sebelum melapor selesai.
+
+Read both files in full before creating or changing any code. Do not be a yes man: ask for
+the spec before non trivial work, and answer the checklist in section 15 item by item
+before claiming the work is done.
