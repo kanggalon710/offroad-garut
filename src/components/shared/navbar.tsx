@@ -103,10 +103,14 @@ export function Navbar() {
               ) : null}
             </div>
           ) : (
-            /* Satu CTA primer per layar (PRD §14.6 poin 4) */
-            <Button asChild>
-              <Link href="/#paket">Pesan Sekarang</Link>
-            </Button>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button variant="ghost" size="md" asChild className="hidden sm:inline-flex">
+                <Link href="/masuk">Masuk</Link>
+              </Button>
+              <Button size="md" asChild>
+                <Link href="/#paket">Pesan Sekarang</Link>
+              </Button>
+            </div>
           )}
         </nav>
       </Container>

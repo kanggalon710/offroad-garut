@@ -178,6 +178,18 @@ export const bookingRouter = router({
         });
       }
 
+      // Paket dummy khusus akun testing: hindari pengguna nyata memesan
+      // paket dengan harga percobaan.
+      if (
+        pkg.slug === "paket-dummy-testing" &&
+        ctx.user.email !== "dummy@offroadgarut.id"
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Paket ini khusus akun testing dan tidak bisa dipesan.",
+        });
+      }
+
       const totalIdr = pkg.pricePerPaxIdr * input.paxCount;
       const bookingCode = generateBookingCode();
 

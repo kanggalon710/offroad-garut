@@ -96,6 +96,18 @@ const packageSeeds = [
     image: "/images/paket-sunrise-cikuray.jpg",
     alt: "Jeep parkir di punggungan gunung menghadap lautan awan saat matahari terbit",
   },
+  {
+    name: "Paket Dummy Testing",
+    slug: "paket-dummy-testing",
+    description:
+      "Paket dummy untuk keperluan testing. Harga khusus Rp 1.000 supaya alur tiket dan pembayaran Midtrans bisa diuji end-to-end.",
+    durationHours: 1,
+    pricePerPaxIdr: 1_000,
+    minPax: 3,
+    maxPax: 5,
+    image: "/images/paket-kebun-teh.jpg",
+    alt: "Gambar paket dummy testing",
+  },
 ];
 
 async function seedPackages() {
