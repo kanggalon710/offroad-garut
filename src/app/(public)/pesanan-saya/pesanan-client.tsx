@@ -1,18 +1,24 @@
 "use client";
 
-import { AlertCircle, Calendar, Users, Loader2 } from "lucide-react";
+import { AlertCircle, Calendar, ChevronRight, Loader2, Ticket, Users } from "lucide-react";
 import Link from "next/link";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { formatIDR } from "@/lib/utils";
 import { api } from "@/trpc/client";
 
-const STATUS_TEXT: Record<string, string> = {
-  pending: "Menunggu Info",
-  awaiting_payment: "Menunggu Pembayaran",
-  paid: "Lunas (Menunggu Jeep)",
-  confirmed: "Dikonfirmasi (Jeep Siap)",
-  completed: "Selesai",
-  cancelled: "Dibatalkan",
+const STATUS_TONE: Record<
+  string,
+  { tone: "success" | "warning" | "danger" | "neutral"; label: string }
+> = {
+  pending: { tone: "neutral", label: "Menunggu Info" },
+  awaiting_payment: { tone: "warning", label: "Menunggu Pembayaran" },
+  paid: { tone: "success", label: "Lunas (Menunggu Jeep)" },
+  confirmed: { tone: "success", label: "Dikonfirmasi" },
+  completed: { tone: "neutral", label: "Selesai" },
+  cancelled: { tone: "danger", label: "Dibatalkan" },
 };
 
 export function PesananSayaClient() {
@@ -20,91 +26,115 @@ export function PesananSayaClient() {
 
   if (isLoading) {
     return (
-      <div className="flex h-40 items-center justify-center">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" aria-hidden="true" />
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" aria-hidden="true" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-40 flex-col items-center justify-center gap-3 text-destructive">
-        <AlertCircle className="size-6" aria-hidden="true" />
-        <p>Gagal memuat pesanan.</p>
-      </div>
+      <Card className="flex flex-col items-center gap-4 p-10 text-center">
+        <div className="flex size-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <AlertCircle className="size-6" aria-hidden="true" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-body font-bold text-foreground">Gagal memuat pesanan</h3>
+          <p className="text-meta text-muted-foreground">
+            Coba muat ulang halaman ini. Kalau masih kendala, hubungi kami lewat WhatsApp.
+          </p>
+        </div>
+      </Card>
     );
   }
 
   if (!orders || orders.length === 0) {
     return (
-      <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground">
-        <p>Kamu belum memiliki pesanan.</p>
-        <Link
-          href="/#paket"
-          className="rounded-[var(--radius-control)] bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-        >
-          Pesan Sekarang
-        </Link>
-      </div>
+      <Card className="flex flex-col items-center gap-5 p-10 text-center">
+        <div className="flex size-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+          <Ticket className="size-7" aria-hidden="true" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-body font-bold text-foreground">Belum ada pesanan</h3>
+          <p className="text-meta text-muted-foreground">
+            Pesan paket pertamamu dan tiket QR-nya akan muncul di sini.
+          </p>
+        </div>
+        <Button asChild size="lg">
+          <Link href="/#paket">Pesan Sekarang</Link>
+        </Button>
+      </Card>
     );
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {orders.map(({ booking, packageName }) => (
-        <Link key={booking.id} href={`/ticket/${booking.bookingCode}`}>
-          <Card className="flex h-full flex-col p-5 hover:border-primary/50 hover:shadow-sm transition-colors">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-body font-bold text-foreground">
-                  {packageName}
-                </h3>
-                <p className="mt-1 text-meta text-muted-foreground font-mono">
-                  {booking.bookingCode}
-                </p>
-              </div>
-              <span
-                className={`inline-flex rounded-full px-2.5 py-0.5 text-[0.75rem] font-medium ${
-                  booking.status === "completed"
-                    ? "bg-muted text-muted-foreground"
-                    : booking.status === "cancelled"
-                    ? "bg-destructive/10 text-destructive"
-                    : booking.status === "confirmed" || booking.status === "paid"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                    : "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400"
-                }`}
-              >
-                {STATUS_TEXT[booking.status] ?? booking.status}
-              </span>
-            </div>
+    <ul className="grid gap-4 sm:grid-cols-2">
+      {orders.map(({ booking, packageName }) => {
+        const status = STATUS_TONE[booking.status] ?? {
+          tone: "neutral" as const,
+          label: booking.status,
+        };
+        const dateLabel = new Date(booking.bookingDate).toLocaleDateString(
+          "id-ID",
+          { weekday: "long", day: "numeric", month: "long", year: "numeric" },
+        );
+        return (
+          <li key={booking.id}>
+            <Link
+              href={`/ticket/${booking.bookingCode}`}
+              className="group block h-full rounded-[var(--radius-card)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            >
+              <Card className="flex h-full flex-col gap-5 p-5 transition-colors group-hover:border-primary/50 group-focus-visible:border-primary">
+                {/* Header: package + status */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h3 className="truncate text-body font-bold text-foreground">
+                      {packageName}
+                    </h3>
+                    <p className="font-mono text-meta text-muted-foreground">
+                      {booking.bookingCode}
+                    </p>
+                  </div>
+                  <Badge tone={status.tone} className="shrink-0">
+                    {status.label}
+                  </Badge>
+                </div>
 
-            <div className="mt-4 flex flex-col gap-2 text-small text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <Calendar className="size-4 shrink-0" aria-hidden="true" />
-                <span>
-                  {new Date(booking.bookingDate).toLocaleDateString("id-ID", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}{" "}
-                  — {booking.timeSlot}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="size-4 shrink-0" aria-hidden="true" />
-                <span>{booking.paxCount} Orang</span>
-              </div>
-            </div>
+                {/* Meta */}
+                <div className="flex flex-col gap-2 text-small text-muted-foreground">
+                  <div className="flex items-start gap-2">
+                    <Calendar
+                      className="mt-0.5 size-4 shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="break-words">
+                      {dateLabel} · {booking.timeSlot}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="size-4 shrink-0" aria-hidden="true" />
+                    <span>{booking.paxCount} Orang</span>
+                  </div>
+                </div>
 
-            <div className="mt-4 flex-1 border-t pt-4">
-              <p className="text-body font-bold text-foreground">
-                Rp {booking.totalIdr.toLocaleString("id-ID")}
-              </p>
-            </div>
-          </Card>
-        </Link>
-      ))}
-    </div>
+                {/* Footer */}
+                <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
+                  <div className="space-y-0.5">
+                    <p className="text-small text-muted-foreground">Total</p>
+                    <p className="text-body font-extrabold text-foreground">
+                      {formatIDR(booking.totalIdr)}
+                    </p>
+                  </div>
+                  <span className="inline-flex items-center gap-1 text-small font-medium text-primary group-hover:translate-x-0.5 transition-transform">
+                    Lihat
+                    <ChevronRight className="size-4" aria-hidden="true" />
+                  </span>
+                </div>
+              </Card>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
