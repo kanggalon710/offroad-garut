@@ -6,8 +6,8 @@ export const site = {
   name: "Offroad Garut",
   tagline: "Sewa Jeep dan paket offroad di kaki Cikuray",
   ownerName: "Pak Asep Saepudin",
-  whatsapp: "+6281234567890",
-  whatsappDisplay: "0812 3456 7890",
+  whatsapp: "+6281399101355",
+  whatsappDisplay: "0813 9910 1355",
   basecamp: {
     name: "Basecamp Cikuray Adventure",
     address: "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",

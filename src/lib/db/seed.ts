@@ -171,7 +171,7 @@ async function seedAdmin() {
 
   await db
     .update(users)
-    .set({ role: "owner", emailVerified: true, phone: "+6281234567890" })
+    .set({ role: "owner", emailVerified: true, phone: "+6281399101355" })
     .where(eq(users.email, ADMIN_EMAIL));
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);
