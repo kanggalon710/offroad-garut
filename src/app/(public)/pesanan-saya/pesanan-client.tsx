@@ -56,7 +56,7 @@ export function PesananSayaClient() {
         </div>
         <div className="space-y-1">
           <h3 className="text-body font-bold text-foreground">Belum ada pesanan</h3>
-          <p className="text-meta text-muted-foreground">
+          <p className="mx-auto max-w-sm text-meta leading-relaxed text-muted-foreground">
             Pesan paket pertamamu dan tiket QR-nya akan muncul di sini.
           </p>
         </div>

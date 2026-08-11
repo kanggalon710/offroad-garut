@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Skill(frontend-design)"
+      "Skill(frontend-design)",
+      "Bash(ssh *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push)"
     ]
-  }
+  },
+  "$version": 4
 }
