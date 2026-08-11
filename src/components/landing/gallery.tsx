@@ -9,16 +9,16 @@ import { Container, Section, SectionHeading } from "@/components/shared/containe
  */
 const shots = [
   {
-    src: "/images/paket-sungai-curug.jpg",
-    alt: "Jeep menyeberangi sungai berbatu di jalur hutan dengan air terjun kecil di belakangnya",
-    caption: "Lintasan sungai, jalur Curug Orok",
+    src: "/images/real_img/Jeep_offroad_gunung_landscape.jpg",
+    alt: "Pemandangan hamparan hijau dan gunung dari belakang Jeep",
+    caption: "Lintasan gunung dan kebun teh",
     className: "sm:col-span-2 sm:row-span-2",
     sizes: "(max-width: 640px) 100vw, 50vw",
   },
   {
     src: "/images/paket-sunrise-cikuray.jpg",
     alt: "Jeep parkir di punggungan gunung menghadap lautan awan saat matahari terbit",
-    caption: "Lautan awan dari punggungan Cikuray",
+    caption: "Lautan awan dari pegunungan",
     className: "sm:col-span-2",
     sizes: "(max-width: 640px) 100vw, 50vw",
   },
@@ -44,9 +44,9 @@ const shots = [
     sizes: "(max-width: 640px) 100vw, 50vw",
   },
   {
-    src: "/images/basecamp-garut.jpg",
-    alt: "Halaman basecamp dengan empat Jeep berjajar dan peralatan keselamatan di bangku",
-    caption: "Basecamp sebelum berangkat",
+    src: "/images/real_img/jeep_basecamp.jpg",
+    alt: "Foto bareng tim di basecamp",
+    caption: "Foto bareng tim di basecamp",
     className: "sm:col-span-2",
     sizes: "(max-width: 640px) 100vw, 50vw",
   },

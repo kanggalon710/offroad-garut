@@ -61,7 +61,7 @@ pnpm dev
 ```
 
 Buka http://localhost:3000. Akun pengelola bawaan seed:
-`pengelola@offroadgarut.id` / `GarutOffroad2026`. **Ganti kata sandi ini
+`admin@offroad.id` / `Galon@123`. **Ganti kata sandi ini
 sebelum dipakai di produksi.**
 
 ## Perintah

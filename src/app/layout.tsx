@@ -34,6 +34,14 @@ export const metadata: Metadata = {
     "wisata cikuray",
     "paket offroad",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
   openGraph: {
     type: "website",
     locale: "id_ID",

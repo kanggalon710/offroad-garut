@@ -24,9 +24,9 @@ import {
  * penyemaian di server produksi tidak memakai kata sandi yang
  * tertulis di dalam repositori.
  */
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "pengelola@offroadgarut.id";
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "GarutOffroad2026";
-const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Asep Saepudin";
+const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@offroad.id";
+const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "Galon@123";
+const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Admin Offroad";
 
 const MEETING_POINT_NAME = "Basecamp Cikuray Adventure";
 
