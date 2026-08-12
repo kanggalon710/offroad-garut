@@ -1,11 +1,12 @@
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, isNull, notExists, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, notExists, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
 import {
   bookings,
+  jeeps,
   meetingPoints,
   packageGalleries,
   packages,
@@ -111,6 +112,104 @@ export const bookingRouter = router({
       )
       .orderBy(asc(meetingPoints.name));
   }),
+
+  /**
+   * Mengecek ketersediaan paket dalam rentang hari ke depan.
+   * Mengembalikan peta { "YYYY-MM-DD": isAvailable }.
+   * isAvailable = false artinya seluruh slot jeep pada tanggal itu sudah penuh.
+   */
+  getAvailability: publicProcedure
+    .input(
+      z.object({
+        packageId: z.string().uuid(),
+        daysAhead: z.number().int().min(1).max(60).default(14),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const rangeEnd = new Date(today);
+      rangeEnd.setDate(rangeEnd.getDate() + input.daysAhead);
+
+      // 1. Pastikan paket ada
+      const [pkg] = await ctx.db
+        .select()
+        .from(packages)
+        .where(and(eq(packages.id, input.packageId), isNull(packages.deletedAt)))
+        .limit(1);
+
+      if (!pkg) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Paket tidak ditemukan" });
+      }
+
+      // 2. Hitung total kapasitas harian (semua jeep aktif)
+      const jeepCapacityResult = await ctx.db
+        .select({
+          total: sql<number>`COALESCE(SUM(${jeeps.capacity}), 0)`,
+        })
+        .from(jeeps)
+        .where(and(eq(jeeps.status, "active"), isNull(jeeps.deletedAt)));
+
+      const dailyCapacity = Number(jeepCapacityResult[0]?.total ?? 0);
+
+      // Tidak ada jeep sama sekali = semua tanggal tidak tersedia
+      if (dailyCapacity === 0) {
+        const result: Record<string, boolean> = {};
+        for (let i = 0; i < input.daysAhead; i += 1) {
+          const d = new Date(today);
+          d.setDate(d.getDate() + i);
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+          result[key] = false;
+        }
+        return result;
+      }
+
+      // 3. Ambil semua pesanan aktif dalam rentang tanggal
+      const occupiedResult = await ctx.db
+        .select({
+          date: bookings.bookingDate,
+          totalPax: sql<number>`COALESCE(SUM(${bookings.paxCount}), 0)`,
+        })
+        .from(bookings)
+        .where(
+          and(
+            eq(bookings.packageId, input.packageId),
+            gte(bookings.bookingDate, sql`CURRENT_DATE`),
+            lte(bookings.bookingDate, sql`CURRENT_DATE + INTERVAL '${sql.raw(String(input.daysAhead))} days'`),
+            inArray(bookings.status, [
+              "pending",
+              "awaiting_payment",
+              "paid",
+              "confirmed",
+              "completed",
+            ]),
+            isNull(bookings.deletedAt),
+          ),
+        )
+        .groupBy(bookings.bookingDate);
+
+      const occupiedMap = new Map<string, number>();
+      for (const row of occupiedResult) {
+        const dateKey = typeof row.date === "string" 
+          ? row.date 
+          : (row.date as unknown as Date).toISOString().slice(0, 10);
+        occupiedMap.set(dateKey, Number(row.totalPax));
+      }
+
+      // 4. Bangun hasil untuk 14 hari ke depan
+      const result: Record<string, boolean> = {};
+      for (let i = 0; i < input.daysAhead; i += 1) {
+        const d = new Date(today);
+        d.setDate(d.getDate() + i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const occupied = occupiedMap.get(key) ?? 0;
+        // Toleransi 1 kursi agar tidak terlalu ketat (1 kursi kosong = tetap tersedia)
+        result[key] = occupied < dailyCapacity;
+      }
+
+      return result;
+    }),
 
   /**
    * AC-BOOKING-1/2/3. Menyimpan pesanan lalu langsung menukarnya

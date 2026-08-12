@@ -92,6 +92,28 @@ export function BookingForm({
   const nameValid = contactName.trim().length >= 2;
   const dateValid = date !== undefined;
 
+  const availabilityQuery = api.booking.getAvailability.useQuery(
+    { packageId: selected?.id ?? "", daysAhead: 30 },
+    { enabled: !!selected },
+  );
+
+  // Modifier react-day-picker: tandai tanggal yang PENUH
+  const modifiers = useMemo(() => {
+    const map = availabilityQuery.data ?? {};
+    const fullDates: Date[] = [];
+    for (const [dateStr, isAvailable] of Object.entries(map)) {
+      if (!isAvailable) {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        if (y && m && d) fullDates.push(new Date(y, m - 1, d));
+      }
+    }
+    return { full: fullDates };
+  }, [availabilityQuery.data]);
+
+  const modifiersClassNames = {
+    full: "rdp-day-full",
+  };
+
   const formValid =
     !!selected && paxValid && phoneValid && nameValid && dateValid && !!meetingPointId;
 
@@ -215,6 +237,8 @@ export function BookingForm({
                     setDateOpen(false);
                   }}
                   disabled={{ before: today }}
+                  modifiers={modifiers}
+                  modifiersClassNames={modifiersClassNames}
                   startMonth={today}
                 />
               </PopoverContent>
