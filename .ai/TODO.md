@@ -89,6 +89,7 @@ pemilik project.
 
 ## Selesai
 
+- [x] 2026-08-12 Perbaikan bug status pembayaran Midtrans (expired URL & sinkronisasi UI)
 - [x] 2026-08-12 Kalender ketersediaan real-time di form booking (menampilkan tanggal penuh)
 - [x] 2026-08-11 Standar pengembangan lintas AI agent (global + project). Lihat
       `.ai/PROGRESS.md`.

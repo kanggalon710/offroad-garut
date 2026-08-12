@@ -22,6 +22,13 @@ function snapUrl(): string {
   return serverKey().startsWith("SB-") ? SANDBOX_SNAP_URL : PRODUCTION_SNAP_URL;
 }
 
+const SANDBOX_API_URL = "https://api.sandbox.midtrans.com/v2";
+const PRODUCTION_API_URL = "https://api.midtrans.com/v2";
+
+function apiUrl(): string {
+  return serverKey().startsWith("SB-") ? SANDBOX_API_URL : PRODUCTION_API_URL;
+}
+
 export type SnapItem = {
   id: string;
   price: number;
@@ -98,6 +105,26 @@ export async function createSnapTransaction(
   }
 
   return { token: payload.token, redirectUrl: payload.redirect_url };
+}
+
+/** Mengecek status transaksi langsung ke API Midtrans. */
+export async function getTransactionStatus(orderId: string): Promise<MidtransNotification | null> {
+  const auth = Buffer.from(`${serverKey()}:`).toString("base64");
+  
+  const response = await fetch(`${apiUrl()}/${orderId}/status`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${auth}`,
+    },
+  });
+
+  if (response.status === 404) return null;
+  
+  if (!response.ok) {
+    throw new Error(`Midtrans gagal mengecek status: ${response.statusText}`);
+  }
+
+  return response.json();
 }
 
 /** Status transaksi yang dikirim Midtrans lewat webhook. */

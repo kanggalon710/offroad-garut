@@ -13,7 +13,7 @@ import {
   payments,
   users,
 } from "@/lib/db/schema";
-import { createSnapTransaction } from "@/lib/midtrans";
+import { createSnapTransaction, getTransactionStatus, mapTransactionStatus } from "@/lib/midtrans";
 import { generateBookingCode, normalizePhone } from "@/lib/utils";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
 
@@ -336,7 +336,13 @@ export const bookingRouter = router({
               name: pkg.name,
             },
           ],
-          finishUrl: `${process.env.NEXT_PUBLIC_APP_URL}/ticket/${booking.bookingCode}`,
+          finishUrl: (() => {
+            // NEXT_PUBLIC_APP_URL harus diisi di .env.local. Kalau kosong,
+            // Midtrans akan redirect ke "undefined/ticket/..." yang tidak valid.
+            const base = process.env.NEXT_PUBLIC_APP_URL;
+            if (!base) throw new Error("NEXT_PUBLIC_APP_URL belum diisi di variabel lingkungan");
+            return `${base}/ticket/${booking.bookingCode}`;
+          })(),
         });
 
         // Token disimpan supaya tombol "Lanjutkan Pembayaran" di halaman
@@ -434,6 +440,70 @@ export const bookingRouter = router({
       }
 
       return row;
+    }),
+
+  /**
+   * Mengecek status transaksi Midtrans saat ini dan memperbarui
+   * status lokal bila perlu. Dipakai halaman E-Ticket untuk
+   * menyegarkan status saat webhook Midtrans belum sampai (misalnya
+   * transaksi sudah expire tapi tab dibuka sebelum notifikasi diterima).
+   */
+  syncBookingStatus: protectedProcedure
+    .input(z.object({ bookingCode: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const isStaff = ctx.user.role === "admin" || ctx.user.role === "owner";
+
+      const [booking] = await ctx.db
+        .select()
+        .from(bookings)
+        .where(
+          isStaff
+            ? eq(bookings.bookingCode, input.bookingCode)
+            : and(
+                eq(bookings.bookingCode, input.bookingCode),
+                eq(bookings.userId, ctx.user.id),
+              ),
+        )
+        .limit(1);
+
+      if (!booking) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Pesanan tidak ditemukan" });
+      }
+
+      // Hanya perlu sinkronisasi kalau pembayaran belum berhasil.
+      if (
+        booking.status === "paid" ||
+        booking.status === "confirmed" ||
+        booking.status === "completed"
+      ) {
+        return { status: booking.status, synced: false };
+      }
+
+      try {
+        const notification = await getTransactionStatus(booking.bookingCode);
+        if (!notification) return { status: booking.status, synced: false };
+
+        const newStatus = mapTransactionStatus(notification);
+        if (newStatus === "paid" && booking.status !== "paid") {
+          await ctx.db
+            .update(bookings)
+            .set({ status: "paid", updatedAt: new Date() })
+            .where(eq(bookings.id, booking.id));
+          return { status: "paid" as const, synced: true };
+        }
+        if (newStatus === "failed" && booking.status !== "cancelled") {
+          await ctx.db
+            .update(bookings)
+            .set({ status: "cancelled", updatedAt: new Date() })
+            .where(eq(bookings.id, booking.id));
+          return { status: "cancelled" as const, synced: true };
+        }
+      } catch (error) {
+        const pesan = error instanceof Error ? error.message : "unknown";
+        console.warn(`[booking] sinkronisasi Midtrans gagal: ${pesan}`);
+      }
+
+      return { status: booking.status, synced: false };
     }),
 
   /** Riwayat pesanan milik user yang sedang login. */

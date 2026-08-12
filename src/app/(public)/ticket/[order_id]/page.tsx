@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { ETicketQR } from "@/components/domain/e-ticket-qr";
 import { ResumePaymentButton } from "@/components/domain/resume-payment-button";
+import { SyncTicketStatus } from "@/components/domain/sync-ticket-status";
 import { Container } from "@/components/shared/container";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,8 @@ export default async function TicketPage({ params }: PageProps) {
 
   return (
     <>
+      <SyncTicketStatus bookingCode={booking.bookingCode} currentStatus={booking.status} />
+
       {!isPaid && !isCancelled ? (
         <Script
           src={process.env.NEXT_PUBLIC_MIDTRANS_URL}
