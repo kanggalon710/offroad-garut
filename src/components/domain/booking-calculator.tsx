@@ -62,7 +62,7 @@ export function PaxCalculator({
           onChange={(event) => onChange(Number(event.target.value))}
           aria-invalid={tooFew || tooMany}
           aria-describedby="pax-help"
-          className="tabular h-12 w-20 rounded-[var(--radius-control)] border border-border bg-surface text-center text-title font-bold aria-[invalid=true]:border-destructive"
+          className="tabular h-12 w-20 rounded-[var(--radius-control)] border border-border bg-surface text-center text-title font-bold aria-[invalid=true]:border-destructive [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
 
         <Button

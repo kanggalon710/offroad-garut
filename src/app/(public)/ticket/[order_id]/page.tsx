@@ -119,9 +119,30 @@ export default async function TicketPage({ params }: PageProps) {
                tombol lanjut bayar, bukan QR */
             <div className="mt-6 space-y-5">
               <Alert tone="warning" title="Menunggu Pembayaran">
-                Pesanan sudah kami simpan, tetapi pembayaran belum kami terima.
-                Tiket QR terbit otomatis begitu pembayaran masuk.
+                Pesanan sudah kami simpan, tetapi pembayaran belum kami terima. 
+                Selesaikan pembayaran untuk menerbitkan tiket QR.
               </Alert>
+
+              <div className="rounded-[var(--radius-control)] border border-border bg-surface p-4 text-meta shadow-sm">
+                <p className="font-semibold text-foreground">Cara membayar:</p>
+                <ol className="mt-2 ml-4 list-decimal space-y-1.5 text-muted-foreground">
+                  <li>
+                    Klik tombol <strong>Lanjutkan Pembayaran</strong> di bawah ini.
+                  </li>
+                  <li>
+                    Akan muncul halaman pembayaran dari Midtrans.
+                  </li>
+                  <li>
+                    Pilih metode pembayaran (QRIS, GoPay, ShopeePay, atau Virtual Account BCA, BNI, BRI, dll).
+                  </li>
+                  <li>
+                    Selesaikan pembayaran sesuai instruksi. Nomor VA atau QR Code akan tampil di halaman tersebut.
+                  </li>
+                </ol>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Jika halaman pembayaran tidak muncul atau tertutup, kamu bisa klik tombol di bawah ini lagi.
+                </p>
+              </div>
 
               <ResumePaymentButton
                 snapToken={snap.token}

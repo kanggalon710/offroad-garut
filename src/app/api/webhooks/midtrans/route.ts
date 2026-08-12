@@ -84,13 +84,24 @@ export async function POST(request: Request) {
         row.booking.status === "confirmed" ||
         row.booking.status === "completed";
 
+      const currentPayment = await tx
+        .select({ metadata: payments.metadata })
+        .from(payments)
+        .where(eq(payments.bookingId, row.booking.id))
+        .limit(1);
+        
+      const existingMetadata = currentPayment[0]?.metadata as Record<string, unknown> | null;
+
       await tx
         .update(payments)
         .set({
           midtransTransactionId: payload.transaction_id,
           paymentMethod: payload.payment_type ?? null,
           status: mapPaymentStatus(payload.transaction_status),
-          metadata: payload,
+          metadata: {
+            ...existingMetadata,
+            ...payload,
+          },
           updatedAt: new Date(),
         })
         .where(eq(payments.bookingId, row.booking.id));
