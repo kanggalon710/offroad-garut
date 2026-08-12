@@ -4,6 +4,15 @@ Entri terbaru di atas. Satu entri per satuan pekerjaan. Jelaskan KENAPA, karena 
 mencatat apa yang berubah. Jangan menulis ulang atau menghapus entri lama, tambahkan entri
 koreksi kalau ada yang keliru.
 
+## 2026-08-12 - Kalender ketersediaan real-time di form booking
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pelanggan ingin melihat ketersediaan kuota sebelum melakukan pemesanan untuk mengurangi transaksi gagal di Midtrans.
+**Perubahan:**
+- tRPC procedure `booking.getAvailability` di `src/server/routers/booking.ts`
+- Integrasi frontend di `src/components/domain/booking-form.tsx` via `useQuery` dan `modifiers` react-day-picker
+- CSS `.rdp-day-full` di `globals.css` untuk menandai tanggal yang penuh
+**File:** src/server/routers/booking.ts, src/components/domain/booking-form.tsx, src/app/globals.css
+**Catatan:** Kapasitas harian dihitung dari jumlah kapasitas semua jeep aktif. Tanggal yang penuh ditampilkan dengan efek coret dan transparan. Toleransi 1 kursi supaya tidak terlalu sensitif. Preview harus dilakukan di dev server dengan database yang sudah di-seed.
 Format: lihat bagian 13 di `~/.ai/AGENTS.md`.
 
 ---
