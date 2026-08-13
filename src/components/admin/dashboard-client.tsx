@@ -3,8 +3,10 @@
 import {
   CalendarCheck,
   CircleDollarSign,
+  Database,
   Loader2,
   MessageCircle,
+  RefreshCw,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -52,6 +54,68 @@ function SummaryCards() {
 }
 
 /**
+ * Kartu sinkronisasi database dari produksi ke dev.
+ * Hanya muncul bila MAIN_DATABASE_URL diset (dev environment).
+ */
+function SyncDbCard() {
+  const syncAvailability = api.admin.getSyncAvailability.useQuery();
+  const syncMutation = api.admin.syncFromMainDb.useMutation();
+  const utils = api.useUtils();
+
+  function handleSync() {
+    if (
+      window.confirm(
+        "Sinkronisasi akan menimpa data dev dengan data terbaru dari produksi. Lanjutkan?",
+      )
+    ) {
+      syncMutation.mutate(undefined, {
+        onSuccess: () => {
+          void utils.admin.getSummary.invalidate();
+          void utils.admin.getPendingOrders.invalidate();
+          alert("Sinkronisasi selesai!");
+        },
+        onError: (error) => {
+          alert("Gagal sinkronisasi: " + error.message);
+        },
+      });
+    }
+  }
+
+  if (!syncAvailability.data?.available) {
+    return null; // Sembunyikan bila tidak tersedia
+  }
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Database className="size-5 text-primary" aria-hidden="true" />
+          <div>
+            <p className="font-semibold">Sinkronisasi Database Dev</p>
+            <p className="text-meta text-muted-foreground">
+              Tarik data master (paket, Jeep, titik kumpul) terbaru dari produksi.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="outline"
+          onClick={handleSync}
+          disabled={syncMutation.isPending}
+          className="flex-shrink-0"
+        >
+          {syncMutation.isPending ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          ) : (
+            <RefreshCw className="size-4" aria-hidden="true" />
+          )}
+          {syncMutation.isPending ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
+/**
  * Kartu pesanan dengan target sentuh besar. Admin memakainya sambil
  * berdiri di basecamp, jadi tiap aksi minimal setinggi 44px dan
  * diberi label teks, bukan ikon saja.
@@ -76,6 +140,8 @@ export function DashboardClient() {
       </div>
 
       <SummaryCards />
+
+      <SyncDbCard />
 
       {orders.isLoading ? (
         <p className="flex items-center gap-2 py-8 text-meta text-muted-foreground">

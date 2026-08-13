@@ -323,4 +323,40 @@ export const adminRouter = router({
   getJeeps: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(jeeps).orderBy(asc(jeeps.plateNumber));
   }),
+
+  /** Cek apakah fitur sync DB tersedia (hanya dev yang punya MAIN_DATABASE_URL). */
+  getSyncAvailability: adminProcedure.query(async () => {
+    return { available: Boolean(process.env.MAIN_DATABASE_URL) };
+  }),
+
+  /**
+   * Menarik data master (titik kumpul, paket, galeri, armada) dari
+   * database produksi ke database dev. Hanya dipakai di lingkungan dev,
+   * jadi dijaga lewat variabel MAIN_DATABASE_URL yang hanya diisi
+   * di server dev.
+   */
+  syncFromMainDb: adminProcedure.mutation(async ({ ctx }) => {
+    const { syncFromMainDb } = await import("@/lib/db/sync");
+
+    if (!process.env.MAIN_DATABASE_URL) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Sinkronisasi tidak tersedia di lingkungan ini (MAIN_DATABASE_URL belum diset).",
+      });
+    }
+
+    const ringkasan = await syncFromMainDb();
+    await ctx.db.transaction(async (tx) => {
+      await catatAudit(tx, {
+        tableName: "audit_logs",
+        recordId: ctx.user.id,
+        action: "UPDATE",
+        newData: { ringkasan },
+        changedBy: ctx.user.id,
+      });
+    });
+
+    return ringkasan;
+  }),
 });

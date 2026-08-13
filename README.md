@@ -190,58 +190,55 @@ lebih andal untuk skrip dan CI.
 
 ## Deployment
 
-### cPanel (Node.js Selector)
+### cPanel (Node.js Selector & 2-Domain Setup)
 
-Alur paling sedikit langkah bagi tiap developer (server cPanel RAM 32 GB,
-build dijalankan langsung di cPanel):
+Setup untuk 2 domain di cPanel yang sama (`garutoffroad.com` dari `main-sql` dan `garutoffroad-dev.com` dari `dev-sql`):
 
-1. Di cPanel, buka **Setup Node.js App**. Pilih versi Node 20 atau 22,
-   arahkan Application root ke direktori proyek, startup file `server.js`.
-   **Tidak perlu mengisi environment variables di cPanel UI** - `server.js`
-   otomatis membaca file `.env.production` atau `.env.local` di direktori
-   proyek menggunakan `process.loadEnvFile()`.
-2. Clone repositori ke direktori proyek dan buat `.env.production`:
+1. **Setup Node.js App di cPanel**
+   - Buat 2 Node.js App terpisah di cPanel (**Setup Node.js App**):
+     - Prod: Domain `garutoffroad.com`, App Root `offroad-garut-prod`, Startup file `server.js`.
+     - Dev: Domain `garutoffroad-dev.com`, App Root `offroad-garut-dev`, Startup file `server.js`.
+   - **Tidak perlu mengisi environment variables di cPanel UI**. `server.js` otomatis membaca `.env.production` lokal di masing-masing direktori proyek lewat `process.loadEnvFile()`.
 
+2. **Clone Repositori di Masing-masing Folder**
+   - **Produksi:**
+     ```bash
+     cd ~/offroad-garut-prod
+     git clone <repo-url> .
+     git checkout main-sql
+     cp .env.example .env.production
+     ```
+   - **Development:**
+     ```bash
+     cd ~/offroad-garut-dev
+     git clone <repo-url> .
+     git checkout dev-sql
+     cp .env.example .env.production
+     ```
+
+3. **Konfigurasi `.env.production` Masing-masing**
+   - **File `.env.production` Prod (`garutoffroad.com`):**
+     Isi `DATABASE_URL` dengan database produksi, `NEXT_PUBLIC_APP_URL="https://garutoffroad.com"`, dan key Midtrans produksi.
+   - **File `.env.production` Dev (`garutoffroad-dev.com`):**
+     Isi `DATABASE_URL` dengan database dev, `NEXT_PUBLIC_APP_URL="https://garutoffroad-dev.com"`, key Midtrans sandbox (`SB-...`), dan tambahkan:
+     ```env
+     MAIN_DATABASE_URL="mysql://user_prod:pass_prod@localhost:3306/db_offroad_prod"
+     ```
+     *(Password dengan karakter `@` di-encode menjadi `%40`).*
+
+4. **Install, Build, & Seed**
+   Di masing-masing folder:
    ```bash
-   cd ~/repositories/offroad-garut
-   git clone <repo-url> .
-   git checkout main-sql
-   cp .env.example .env.production
+   npm install && npm run build && npm run db:seed
    ```
 
-   Isi `.env.production` sesuai kredensial server. Nilai `DATABASE_URL` memakai
-   format `mysql://user:password@localhost:3306/nama_db` (karakter `@` di
-   password di-encode menjadi `%40`).
+5. **Fitur Sync Database Dev ke Prod Data**
+   Pada environment Dev (bila `MAIN_DATABASE_URL` diisi), tombol **"Sinkronkan Sekarang"** akan muncul di Dashboard Admin Dev (`/dashboard`). Menekan tombol ini akan menarik data master (paket, titik kumpul, armada) dari DB Produksi ke DB Dev tanpa menghapus paket dummy testing (Rp 1.000).
 
-3. Install dependensi lengkap:
+6. **Restart Aplikasi**
+   Klik **Restart** pada cPanel Node.js App masing-masing.
 
-   ```bash
-   npm install
-   ```
-
-4. Build di cPanel:
-
-   ```bash
-   npm run build
-   ```
-
-5. Seed data awal sekali saja:
-
-   ```bash
-   npm run db:seed
-   ```
-
-6. Restart aplikasi dari Setup Node.js App. `server.js` otomatis membaca
-   `.env.production`, menjalankan migrasi database saat start, lalu melayani
-   aplikasi.
-7. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
-8. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
-   di Google Cloud Console.
-
-**Perhatian variabel build:** variabel berawalan `NEXT_PUBLIC_` (APP_URL,
-MIDTRANS_CLIENT_KEY, MIDTRANS_URL, R2_PUBLIC_URL) ditanam ke bundel saat
-`npm run build`. Jika ada penambahan/perubahan variabel lingkungan baru di masa
-depan, cukup update file `.env.production` di server lalu jalankan `npm run build`.
+**Perhatian variabel build:** Variabel berawalan `NEXT_PUBLIC_` ditanam ke bundel JavaScript saat `npm run build`. Jika ada penambahan/perubahan variabel lingkungan baru di masa depan, cukup update file `.env.production` di server lalu jalankan `npm run build`.
 
 ### VPS Ubuntu
 
