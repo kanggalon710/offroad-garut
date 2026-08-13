@@ -14,6 +14,14 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns"],
   },
+  // Production build di cPanel tidak memasang devDependencies (eslint, typescript, @types/*)
+  // Typecheck & lint sudah lulus di CI/lokal. Abaikan saat build production.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
 };
 
 export default nextConfig;
