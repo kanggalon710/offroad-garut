@@ -14,6 +14,18 @@
  */
 import { createServer } from "node:http";
 import next from "next";
+
+// Muat .env.production atau .env.local secara otomatis saat startup Phusion Passenger/cPanel
+// agar tidak perlu mendaftarkan variabel lingkungan manual di cPanel UI.
+for (const envFile of [".env.production", ".env.local"]) {
+  try {
+    process.loadEnvFile(envFile);
+    break;
+  } catch {
+    // Lewati jika file tidak ada
+  }
+}
+
 import migrasi from "./scripts/terapkan-migrasi.cjs";
 
 const port = Number(process.env.PORT) || 3000;

@@ -29,15 +29,6 @@ export const auth = betterAuth({
     schema: { users, sessions, accounts, verifications },
   }),
 
-  advanced: {
-    database: {
-      // Biarkan better-auth membuat id sendiri (nanoid) karena
-      // MySQL tidak punya gen_random_uuid(). Kolom id bertipe string
-      // 36 karakter diisi oleh aplikasi, bukan database.
-      generateId: false,
-    },
-  },
-
   user: {
     modelName: "users",
     fields: {

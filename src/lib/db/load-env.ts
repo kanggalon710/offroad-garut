@@ -1,15 +1,13 @@
 /**
- * Memuat .env.local untuk skrip yang dijalankan di luar Next.js.
- *
- * Harus berupa modul terpisah dan diimpor paling awal. Pernyataan
- * `import` di-hoist, jadi kode yang ditulis di atas impor lain tetap
- * berjalan belakangan, sedangkan koneksi database dibuat begitu modulnya
- * dimuat.
+ * Memuat .env.production atau .env.local untuk skrip yang dijalankan di luar Next.js (seperti db:seed).
  */
-try {
-  process.loadEnvFile(".env.local");
-} catch {
-  // Wajar di CI, tempat variabel sudah disuntikkan langsung ke environment.
+for (const envFile of [".env.production", ".env.local"]) {
+  try {
+    process.loadEnvFile(envFile);
+    break;
+  } catch {
+    // Lewati jika file tidak ada
+  }
 }
 
 export {};

@@ -145,33 +145,103 @@ git checkout deploy && git merge --no-ff dev && git push
 git checkout main && git merge --no-ff deploy && git push
 ```
 
-CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build
-pada setiap push dan pull request ke ketiga branch.
+**Cabang `main-sql`:** versi MariaDB/MySQL dari aplikasi untuk cPanel.
+Semua perintah di bawah berlaku untuk cabang ini. Alurnya sama dengan
+`dev -> deploy -> main`, yaitu `dev-sql -> deploy-sql -> main-sql` bila
+membutuhkan lingkungan preview.
+
+## Pengujian lokal
+
+Butuh MariaDB/MySQL lokal. Setup sekali (Fedora):
+
+```bash
+sudo dnf install -y mariadb mariadb-server
+sudo systemctl enable --now mariadb
+```
+
+Buat pengguna dan database:
+
+```bash
+sudo mariadb -e "CREATE USER IF NOT EXISTS 'yoga'@'localhost' IDENTIFIED BY 'ganti-password'; GRANT ALL PRIVILEGES ON *.* TO 'yoga'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+mariadb -u yoga -p -e "CREATE DATABASE IF NOT EXISTS offroad_garut CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+Setel `.env.local` (format `DATABASE_URL`):
+
+```bash
+DATABASE_URL="mysql://yoga:ganti-password@localhost:3306/offroad_garut"
+```
+
+Terapkan skema dan seed:
+
+```bash
+mariadb -u yoga -p offroad_garut < drizzle/0000_material_dormammu.sql
+npm run db:seed
+```
+
+Jalankan verifikasi:
+
+```bash
+npm run typecheck && npm run lint && npm run test && npm run build
+```
+
+`db:push` bersifat interaktif (minta TTY), jadi jalur migrasi SQL di atas
+lebih andal untuk skrip dan CI.
 
 ## Deployment
 
 ### cPanel (Node.js Selector)
 
-1. Push kode ke repositori Git, lalu pull di cPanel Node.js App, atau unggah
-   manual.
-2. Jalankan `npm install --omit=dev` di terminal cPanel setelah aplikasi
-   di-clone. Pastikan Node versi >= 20.
-3. Buat database MariaDB lewat cPanel (MySQL Databases). Catat nama database,
-   user, dan password. Isi `DATABASE_URL` di environment variables cPanel
-   dengan format `mysql://user:password@localhost:3306/nama_db`.
-4. Jalankan `npm run build` di terminal cPanel. Build harus sukses sebelum
-   aplikasi dijalankan.
-5. Setel entry point aplikasi ke `server.js`. cPanel Node.js Selector akan
-   menjalankannya lewat Phusion Passenger.
-6. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
-7. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
+Alur paling sedikit langkah bagi tiap developer (server cPanel RAM 32 GB,
+build dijalankan langsung di cPanel):
+
+1. Di cPanel, buka **Setup Node.js App**. Pilih versi Node 20 atau 22,
+   arahkan Application root ke direktori proyek, startup file `server.js`.
+   **Tidak perlu mengisi environment variables di cPanel UI** - `server.js`
+   otomatis membaca file `.env.production` atau `.env.local` di direktori
+   proyek menggunakan `process.loadEnvFile()`.
+2. Clone repositori ke direktori proyek dan buat `.env.production`:
+
+   ```bash
+   cd ~/repositories/offroad-garut
+   git clone <repo-url> .
+   git checkout main-sql
+   cp .env.example .env.production
+   ```
+
+   Isi `.env.production` sesuai kredensial server. Nilai `DATABASE_URL` memakai
+   format `mysql://user:password@localhost:3306/nama_db` (karakter `@` di
+   password di-encode menjadi `%40`).
+
+3. Install dependensi lengkap:
+
+   ```bash
+   npm install
+   ```
+
+4. Build di cPanel:
+
+   ```bash
+   npm run build
+   ```
+
+5. Seed data awal sekali saja:
+
+   ```bash
+   npm run db:seed
+   ```
+
+6. Restart aplikasi dari Setup Node.js App. `server.js` otomatis membaca
+   `.env.production`, menjalankan migrasi database saat start, lalu melayani
+   aplikasi.
+7. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
+8. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
    di Google Cloud Console.
-8. Isi semua variabel dari `.env.example` di environment variables cPanel.
-   **Variabel berawalan `NEXT_PUBLIC_` harus sudah terisi sebelum build
-   dijalankan** karena nilainya ditanam ke bundel saat kompilasi.
-9. `server.js` otomatis menjalankan migrasi database saat start. Setelah
-   aplikasi berjalan, jalankan `npm run db:seed` sekali untuk mengisi data
-   awal (paket, titik kumpul, armada Jeep, akun pengelola).
+
+**Perhatian variabel build:** variabel berawalan `NEXT_PUBLIC_` (APP_URL,
+MIDTRANS_CLIENT_KEY, MIDTRANS_URL, R2_PUBLIC_URL) ditanam ke bundel saat
+`npm run build`. Jika ada penambahan/perubahan variabel lingkungan baru di masa
+depan, cukup update file `.env.production` di server lalu jalankan `npm run build`.
 
 ### VPS Ubuntu
 
