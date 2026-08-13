@@ -11,9 +11,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const mysql = require("mysql2/promise");
 
-// Kode error MySQL untuk objek yang sudah ada
-// 1050: Table exists, 1061: Duplicate key name, 1060: Duplicate column name
-const SUDAH_ADA = new Set([1050, 1061, 1060]);
+// Kode error MySQL untuk objek/constraint yang sudah ada saat re-run migrasi:
+// 1050: Table exists
+// 1061: Duplicate key name (index)
+// 1060: Duplicate column name
+// 1826: Duplicate foreign key constraint name
+// 1822: Failed to add foreign key constraint (already exists)
+const SUDAH_ADA = new Set([1050, 1061, 1060, 1826, 1822]);
 
 function bacaEnv() {
   if (process.env.DATABASE_URL) return;
