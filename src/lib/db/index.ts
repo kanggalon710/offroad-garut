@@ -1,11 +1,12 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
+import { drizzle } from "drizzle-orm/mysql2";
+import mysql from "mysql2/promise";
 
 import * as schema from "./schema";
 
 /**
  * Pool di-cache di globalThis supaya hot reload Next.js tidak membuka
- * koneksi baru terus menerus sampai Neon menolak.
+ * koneksi baru terus-menerus. Karena cPanel sering kali membatasi
+ * koneksi simultan ke MySQL, kolam ini dibatasi hanya lima.
  *
  * Alamat koneksinya ikut disimpan. Tanpa itu, mengubah DATABASE_URL di
  * .env.local saat server pengembangan berjalan tidak akan berpengaruh:
@@ -14,21 +15,26 @@ import * as schema from "./schema";
  * bermasalah.
  */
 const globalForDb = globalThis as unknown as {
-  pool: Pool | undefined;
+  pool: mysql.Pool | undefined;
   poolUrl: string | undefined;
 };
 
 const connectionString = process.env.DATABASE_URL;
 
-function buatPool(): Pool {
-  return new Pool({
-    connectionString,
-    max: 10,
-    idleTimeoutMillis: 30_000,
+function buatPool(): mysql.Pool {
+  return mysql.createPool({
+    uri: connectionString,
+    waitForConnections: true,
+    connectionLimit: 5,
+    queueLimit: 0,
+    timezone: "Z",
+    /* mysql2 mengembalikan DECIMAL sebagai string secara default;
+       biarkan nullDate di mode string supaya konsisten. */
+    dateStrings: false,
   });
 }
 
-let pool: Pool;
+let pool: mysql.Pool;
 
 if (globalForDb.pool && globalForDb.poolUrl === connectionString) {
   pool = globalForDb.pool;
@@ -43,6 +49,6 @@ if (process.env.NODE_ENV !== "production") {
   globalForDb.poolUrl = connectionString;
 }
 
-export const db = drizzle(pool, { schema });
+export const db = drizzle(pool, { schema, mode: "default" });
 export type Database = typeof db;
 export { schema };

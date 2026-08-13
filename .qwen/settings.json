@@ -5,7 +5,13 @@
       "Bash(ssh *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "WebFetch(api.sandbox.midtrans.com)",
+      "Bash(do *)",
+      "Bash(git *)",
+      "Bash(done)",
+      "Skill(brainstorming)",
+      "WebFetch(duckduckgo.com)"
     ]
   },
   "$version": 4

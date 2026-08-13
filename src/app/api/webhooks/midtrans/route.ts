@@ -74,7 +74,7 @@ export async function POST(request: Request) {
         .innerJoin(packages, eq(packages.id, bookings.packageId))
         .leftJoin(meetingPoints, eq(meetingPoints.id, bookings.meetingPointId))
         .where(eq(bookings.bookingCode, payload.order_id))
-        .for("update", { of: bookings })
+        .for("update")
         .limit(1);
 
       if (!row) return { kind: "not-found" as const };

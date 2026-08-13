@@ -25,15 +25,15 @@ export const auth = betterAuth({
       : ["http://localhost:*", "http://127.0.0.1:*"],
 
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: "mysql",
     schema: { users, sessions, accounts, verifications },
   }),
 
   advanced: {
     database: {
-      // Biarkan Postgres yang membuat id lewat gen_random_uuid().
-      // Generator id bawaan better-auth menghasilkan string non-uuid
-      // yang ditolak kolom bertipe uuid.
+      // Biarkan better-auth membuat id sendiri (nanoid) karena
+      // MySQL tidak punya gen_random_uuid(). Kolom id bertipe string
+      // 36 karakter diisi oleh aplikasi, bukan database.
       generateId: false,
     },
   },

@@ -50,7 +50,7 @@ export default async function BookingPage({ searchParams }: PageProps) {
 
   const userPhone =
     typeof (session.user as { phone?: unknown }).phone === "string"
-      ? (session.user as { phone: string }).phone
+      ? (session.user as unknown as { phone: string }).phone
       : "";
 
   return (

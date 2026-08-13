@@ -14,7 +14,7 @@ disengaja terhadap PRD dicatat di [DEVIASI-PRD.md](DEVIASI-PRD.md).
 | Framework | Next.js 15 (App Router, React 19) |
 | Styling | Tailwind CSS v4, komponen bergaya shadcn/ui |
 | API | tRPC v11 |
-| Database | PostgreSQL + PostGIS, Drizzle ORM |
+| Database | MariaDB/MySQL, Drizzle ORM |
 | Auth | Better-auth (Google OAuth untuk turis, email + password untuk pengelola) |
 | Pembayaran | Midtrans Snap v3 |
 | Notifikasi | Fonnte (WhatsApp) |
@@ -24,40 +24,37 @@ disengaja terhadap PRD dicatat di [DEVIASI-PRD.md](DEVIASI-PRD.md).
 ## Quickstart
 
 ```bash
-pnpm install
+npm install
 ```
 
 ```bash
 cp .env.example .env.local
 ```
 
-Isi minimal `DATABASE_URL`. Database harus punya ekstensi PostGIS:
+Isi minimal `DATABASE_URL`. Database menggunakan MariaDB atau MySQL.
+
+Terapkan skema. `drizzle-kit push` meminta konfirmasi interaktif, tetapi untuk lingkungan baru disarankan:
 
 ```bash
-psql -d nama_database -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-```
-
-Terapkan skema. `drizzle-kit push` meminta konfirmasi interaktif kalau database
-sudah berisi tabel PostGIS, jadi jalur migrasi lebih dapat diandalkan:
-
-```bash
-pnpm db:generate
+npm run db:generate
 ```
 
 ```bash
-psql -d nama_database -f drizzle/0000_init.sql
+npm run db:push
 ```
+
+Atau terapkan SQL di `drizzle/0000_...sql` langsung ke database.
 
 Isi data awal (3 paket, 1 titik kumpul, 5 unit Jeep, satu akun pengelola):
 
 ```bash
-pnpm db:seed
+npm run db:seed
 ```
 
 Jalankan:
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Buka http://localhost:3000. Akun pengelola bawaan seed:
@@ -67,19 +64,19 @@ sebelum dipakai di produksi.**
 ## Perintah
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 ```bash
-pnpm typecheck
+npm run typecheck
 ```
 
 ```bash
-pnpm test
+npm run test
 ```
 
 ```bash
-pnpm build
+npm run build
 ```
 
 ## Struktur
@@ -149,19 +146,34 @@ git checkout main && git merge --no-ff deploy && git push
 ```
 
 CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build
-pada setiap push dan pull request ke ketiga branch. Test memerlukan database,
-jadi workflow menyalakan service container PostGIS lalu menerapkan migrasi dan
-seed sebelum menjalankannya.
+pada setiap push dan pull request ke ketiga branch.
 
 ## Deployment
 
-1. Push ke GitHub atau GitLab, sambungkan ke project Vercel.
-2. Isi seluruh variabel dari `.env.example` di tab Environment Variables Vercel,
-   untuk Production maupun Preview. **Variabel berawalan `NEXT_PUBLIC_` harus
-   sudah terisi sebelum build dijalankan**, karena nilainya ditanam ke dalam
-   bundel saat kompilasi. Kalau `NEXT_PUBLIC_APP_URL` kosong saat build,
-   `metadataBase` dan tautan Open Graph akan menunjuk ke `localhost`.
-3. Pastikan database produksi sudah mengaktifkan ekstensi `postgis`.
-4. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
-5. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
+### cPanel (Node.js Selector)
+
+1. Push kode ke repositori Git, lalu pull di cPanel Node.js App, atau unggah
+   manual.
+2. Jalankan `npm install --omit=dev` di terminal cPanel setelah aplikasi
+   di-clone. Pastikan Node versi >= 20.
+3. Buat database MariaDB lewat cPanel (MySQL Databases). Catat nama database,
+   user, dan password. Isi `DATABASE_URL` di environment variables cPanel
+   dengan format `mysql://user:password@localhost:3306/nama_db`.
+4. Jalankan `npm run build` di terminal cPanel. Build harus sukses sebelum
+   aplikasi dijalankan.
+5. Setel entry point aplikasi ke `server.js`. cPanel Node.js Selector akan
+   menjalankannya lewat Phusion Passenger.
+6. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
+7. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
    di Google Cloud Console.
+8. Isi semua variabel dari `.env.example` di environment variables cPanel.
+   **Variabel berawalan `NEXT_PUBLIC_` harus sudah terisi sebelum build
+   dijalankan** karena nilainya ditanam ke bundel saat kompilasi.
+9. `server.js` otomatis menjalankan migrasi database saat start. Setelah
+   aplikasi berjalan, jalankan `npm run db:seed` sekali untuk mengisi data
+   awal (paket, titik kumpul, armada Jeep, akun pengelola).
+
+### VPS Ubuntu
+
+Lihat [DEPLOY-VPS.md](DEPLOY-VPS.md) untuk instruksi deploy ke VPS Ubuntu
+dengan nginx, systemd, dan PostgreSQL.

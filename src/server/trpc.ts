@@ -38,7 +38,7 @@ export async function createTRPCContext(opts: {
           role: toRole((session.user as { role?: unknown }).role),
           phone:
             typeof (session.user as { phone?: unknown }).phone === "string"
-              ? (session.user as { phone: string }).phone
+              ? (session.user as unknown as { phone: string }).phone
               : null,
         }
       : null,

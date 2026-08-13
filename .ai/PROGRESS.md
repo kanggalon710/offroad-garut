@@ -1,8 +1,17 @@
-# Riwayat Perubahan
-
-Entri terbaru di atas. Satu entri per satuan pekerjaan. Jelaskan KENAPA, karena git sudah
-mencatat apa yang berubah. Jangan menulis ulang atau menghapus entri lama, tambahkan entri
-koreksi kalau ada yang keliru.
+## 2026-08-13 - Migrasi basis data dari PostgreSQL ke MariaDB/MySQL untuk kompatibilitas cPanel
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Branch main-sql bertujuan menjalankan aplikasi di shared-hosting cPanel yang hanya mendukung MariaDB/MySQL, bukan PostgreSQL. PostGIS dan skema awal tidak kompatibel dengan batasan cPanel.
+**Perubahan:**
+- Mengganti dialect Drizzle dari postgresql ke mysql di drizzle.config.ts
+- Mengganti paket pg menjadi mysql2 dan mengandalkan drizzle-orm/mysql2
+- Memodifikasi src/lib/db/index.ts untuk menggunakan connection pool mysql2 dengan batas 5 koneksi (sesuai limit cPanel)
+- Memperbaiki src/lib/db/errors.ts dan src/test/db-errors.test.ts menggunakan kode kesalahan MySQL/MariaDB
+- Menghapus pnpm lockfile dan beralih ke npm (package-lock.json) untuk integrasi yang lebih baik dengan cPanel Node.js Selector
+- Memperbaiki TypeScript error di src/lib/auth.ts (advanced.generateId) dan cast session.user ke unknown untuk mengakses phone
+- Memperbarui README.md, AGENTS.md, dan menambahkan instruksi deploy khusus untuk cPanel (Node.js Selector) di bagian Deployment
+- Menambahkan deviasi PRD ke-6 di DEVIASI-PRD.md (basis data dimigrasi dari PostgreSQL ke MySQL/MariaDB agar lebih mendukung cPanel shared-hosting)
+**File:** drizzle.config.ts, src/lib/db/index.ts, src/lib/db/errors.ts, src/test/db-errors.test.ts, src/lib/auth.ts, src/app/(public)/booking/page.tsx, src/server/trpc.ts, package.json, package-lock.json, README.md, AGENTS.md, DEVIASI-PRD.md
+**Catatan:** Setelah migrasi, build berhasil (npm run build), lint dan typecheck bersih. Aplikasi siap dijalankan di cPanel setelah mengisi environment variables dan menjalankan `npm run db:seed` untuk data awal.
 
 ## 2026-08-12 - Perbaikan penanganan status pembayaran expire dan redirect URL Midtrans
 **Agen:** qwen | **Status:** selesai

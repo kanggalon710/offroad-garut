@@ -1,6 +1,6 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, desc, eq, gte, inArray, isNull, lte, notExists, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
@@ -16,9 +16,6 @@ import {
 import { createSnapTransaction, getTransactionStatus, mapTransactionStatus } from "@/lib/midtrans";
 import { generateBookingCode, normalizePhone } from "@/lib/utils";
 import { protectedProcedure, publicProcedure, router } from "../trpc";
-
-/** Alias users untuk memeriksa apakah nomor sudah dipakai akun lain. */
-const pemakaiNomor = alias(users, "pemakai_nomor");
 
 export const bookingRouter = router({
   /** Katalog paket untuk landing page. Publik, tanpa login. */
@@ -91,7 +88,7 @@ export const bookingRouter = router({
       const [pkg] = await ctx.db
         .select()
         .from(packages)
-        .where(eq(packages.id, input.id))
+        .where(and(eq(packages.id, input.id), isNull(packages.deletedAt)))
         .limit(1);
 
       if (!pkg) {
@@ -129,9 +126,6 @@ export const bookingRouter = router({
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
-      const rangeEnd = new Date(today);
-      rangeEnd.setDate(rangeEnd.getDate() + input.daysAhead);
-
       // 1. Pastikan paket ada
       const [pkg] = await ctx.db
         .select()
@@ -144,14 +138,12 @@ export const bookingRouter = router({
       }
 
       // 2. Hitung total kapasitas harian (semua jeep aktif)
-      const jeepCapacityResult = await ctx.db
-        .select({
-          total: sql<number>`COALESCE(SUM(${jeeps.capacity}), 0)`,
-        })
+      const jeepRows = await ctx.db
+        .select({ capacity: jeeps.capacity })
         .from(jeeps)
         .where(and(eq(jeeps.status, "active"), isNull(jeeps.deletedAt)));
 
-      const dailyCapacity = Number(jeepCapacityResult[0]?.total ?? 0);
+      const dailyCapacity = jeepRows.reduce((sum, r) => sum + r.capacity, 0);
 
       // Tidak ada jeep sama sekali = semua tanggal tidak tersedia
       if (dailyCapacity === 0) {
@@ -166,7 +158,18 @@ export const bookingRouter = router({
       }
 
       // 3. Ambil semua pesanan aktif dalam rentang tanggal
-      const occupiedResult = await ctx.db
+      const formatIso = (d: Date): string => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        return `${y}-${m}-${day}`;
+      };
+      const todayStr = formatIso(today);
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + input.daysAhead);
+      const endStr = formatIso(endDate);
+
+      const occupiedRows = await ctx.db
         .select({
           date: bookings.bookingDate,
           totalPax: sql<number>`COALESCE(SUM(${bookings.paxCount}), 0)`,
@@ -175,12 +178,9 @@ export const bookingRouter = router({
         .where(
           and(
             eq(bookings.packageId, input.packageId),
-            gte(bookings.bookingDate, sql`CURRENT_DATE`),
-            lte(bookings.bookingDate, sql`CURRENT_DATE + INTERVAL '${sql.raw(String(input.daysAhead))} days'`),
+            gte(bookings.bookingDate, todayStr),
+            lte(bookings.bookingDate, endStr),
             inArray(bookings.status, [
-              "pending",
-              "awaiting_payment",
-              "paid",
               "confirmed",
               "completed",
             ]),
@@ -190,14 +190,14 @@ export const bookingRouter = router({
         .groupBy(bookings.bookingDate);
 
       const occupiedMap = new Map<string, number>();
-      for (const row of occupiedResult) {
-        const dateKey = typeof row.date === "string" 
-          ? row.date 
+      for (const row of occupiedRows) {
+        const dateKey = typeof row.date === "string"
+          ? row.date
           : (row.date as unknown as Date).toISOString().slice(0, 10);
         occupiedMap.set(dateKey, Number(row.totalPax));
       }
 
-      // 4. Bangun hasil untuk 14 hari ke depan
+      // 4. Bangun hasil untuk N hari ke depan
       const result: Record<string, boolean> = {};
       for (let i = 0; i < input.daysAhead; i += 1) {
         const d = new Date(today);
@@ -293,9 +293,12 @@ export const bookingRouter = router({
       const bookingCode = generateBookingCode();
 
       const hasil = await ctx.db.transaction(async (tx) => {
-        const [booking] = await tx
+        const bookingId = randomUUID();
+        
+        await tx
           .insert(bookings)
           .values({
+            id: bookingId,
             bookingCode,
             userId: ctx.user.id,
             packageId: pkg.id,
@@ -308,8 +311,9 @@ export const bookingRouter = router({
             contactName: input.contactName,
             contactPhone: phone,
             specialRequests: input.specialRequests ?? null,
-          })
-          .returning();
+          });
+
+        const [booking] = await tx.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
 
         if (!booking) {
           throw new TRPCError({
@@ -349,6 +353,7 @@ export const bookingRouter = router({
         // E-Ticket bisa memakai ulang transaksi yang sama. Membuat
         // transaksi baru akan ditolak Midtrans karena order_id kembar.
         await tx.insert(payments).values({
+          id: randomUUID(),
           bookingId: booking.id,
           amountIdr: totalIdr,
           status: "pending",
@@ -374,21 +379,18 @@ export const bookingRouter = router({
       // sebenarnya sudah sah.
       if (!ctx.user.phone) {
         try {
-          await ctx.db
-            .update(users)
-            .set({ phone, updatedAt: new Date() })
-            .where(
-              and(
-                eq(users.id, ctx.user.id),
-                isNull(users.phone),
-                notExists(
-                  ctx.db
-                    .select({ one: sql`1` })
-                    .from(pemakaiNomor)
-                    .where(eq(pemakaiNomor.phone, phone)),
-                ),
-              ),
-            );
+          const [exists] = await ctx.db
+            .select({ one: users.id })
+            .from(users)
+            .where(eq(users.phone, phone))
+            .limit(1);
+
+          if (!exists) {
+            await ctx.db
+              .update(users)
+              .set({ phone, updatedAt: new Date() })
+              .where(eq(users.id, ctx.user.id));
+          }
         } catch (error) {
           const pesan = error instanceof Error ? error.message : "unknown";
           console.error(`[booking] gagal melengkapi profil: ${pesan}`);
@@ -484,7 +486,7 @@ export const bookingRouter = router({
         if (!notification) return { status: booking.status, synced: false };
 
         const newStatus = mapTransactionStatus(notification);
-        if (newStatus === "paid" && booking.status !== "paid") {
+        if (newStatus === "paid") {
           await ctx.db
             .update(bookings)
             .set({ status: "paid", updatedAt: new Date() })

@@ -14,6 +14,7 @@
  */
 import { createServer } from "node:http";
 import next from "next";
+import migrasi from "./scripts/terapkan-migrasi.cjs";
 
 const port = Number(process.env.PORT) || 3000;
 const hostname = process.env.HOSTNAME || "0.0.0.0";
@@ -21,8 +22,14 @@ const hostname = process.env.HOSTNAME || "0.0.0.0";
 const app = next({ dev: false, hostname, port });
 const handle = app.getRequestHandler();
 
-app
-  .prepare()
+migrasi
+  .terapkanMigrasi()
+  .then((hasil) => {
+    console.log(
+      `Migrasi DB: ${hasil.dibuat} statement dijalankan, ${hasil.dilewati} dilewati.`,
+    );
+    return app.prepare();
+  })
   .then(() => {
     createServer((req, res) => {
       handle(req, res).catch((error) => {

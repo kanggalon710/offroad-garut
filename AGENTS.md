@@ -61,7 +61,7 @@ lokal) butuh notifikasi WhatsApp cepat lewat Fonnte dan manajemen alokasi Jeep.
 
 - **Frontend**: Next.js 15 App Router, React Server Components (SEO first), Tailwind CSS v4, komponen bergaya shadcn/ui.
 - **Backend/State**: tRPC v11 di Next.js Route Handler. Zustand disiapkan tapi belum diperlukan: kalkulator booking cukup pakai state lokal satu komponen.
-- **Database**: PostgreSQL (Neon) + PostGIS, Drizzle ORM.
+- **Database**: MariaDB/MySQL, Drizzle ORM.
 - **Auth**: Better-auth (Google OAuth untuk turis, email + password untuk pengelola).
 - **3rd Party**: Midtrans Snap, Fonnte WA, Leaflet, Cloudflare R2.
 
@@ -109,17 +109,18 @@ keputusan yang tidak biasa.
 3. `drizzle-orm` dinaikkan ke 0.45.x. Better-auth 1.6 menolak 0.36.x.
 4. `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` ditambahkan. snap.js membacanya di browser.
 5. Kolom `bookings.contact_name` dan `contact_phone` ditambahkan sebagai snapshot kontak untuk Fonnte.
+6. Basis data dimigrasi dari PostgreSQL ke MySQL/MariaDB agar lebih mendukung cPanel shared-hosting.
 
 ## Commands / Perintah
 
 ```bash
-pnpm dev          # server pengembangan
-pnpm typecheck    # wajib 0 error sebelum commit
-pnpm lint         # wajib bersih sebelum commit
-pnpm test         # uji penerimaan, butuh database yang sudah di-seed
-pnpm build        # wajib sukses sebelum deploy
-pnpm db:push      # sinkronisasi skema ke database
-pnpm db:seed      # isi paket, titik kumpul, armada, akun pengelola
+npm run dev          # server pengembangan
+npm run typecheck    # wajib 0 error sebelum commit
+npm run lint         # wajib bersih sebelum commit
+npm run test         # uji penerimaan, butuh database yang sudah di-seed
+npm run build        # wajib sukses sebelum deploy
+npm run db:push      # sinkronisasi skema ke database
+npm run db:seed      # isi paket, titik kumpul, armada, akun pengelola
 ```
 
 ## Other docs / Dokumen lain

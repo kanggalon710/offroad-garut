@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, exists, inArray, ne, sql, sum } from "drizzle-orm";
 import { z } from "zod";
@@ -151,6 +152,7 @@ export const adminRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const dateStr = typeof input.date === "string" ? input.date : new Date(input.date).toISOString().slice(0, 10);
       const clash = ctx.db
         .select({ one: sql`1` })
         .from(bookingAllocations)
@@ -158,7 +160,7 @@ export const adminRouter = router({
         .where(
           and(
             eq(bookingAllocations.jeepId, jeeps.id),
-            eq(bookings.bookingDate, input.date),
+            eq(bookings.bookingDate, dateStr),
             eq(bookings.timeSlot, input.timeSlot),
             inArray(bookings.status, [...ACTIVE_BOOKING_STATUSES]),
           ),
@@ -254,10 +256,10 @@ export const adminRouter = router({
           });
         }
 
-        const [allocation] = await tx
+        const allocationId = randomUUID();
+        await tx
           .insert(bookingAllocations)
-          .values({ bookingId: booking.id, jeepId: input.jeepId })
-          .returning();
+          .values({ id: allocationId, bookingId: booking.id, jeepId: input.jeepId });
 
         await tx
           .update(bookings)
@@ -281,7 +283,7 @@ export const adminRouter = router({
 
         return {
           success: true as const,
-          allocationId: allocation?.id ?? null,
+          allocationId,
           jeepPlate: jeep.plateNumber,
         };
       });
@@ -293,9 +295,13 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
         const dilepas = await tx
+          .select({ jeepId: bookingAllocations.jeepId })
+          .from(bookingAllocations)
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
+
+        await tx
           .delete(bookingAllocations)
-          .where(eq(bookingAllocations.bookingId, input.bookingId))
-          .returning({ jeepId: bookingAllocations.jeepId });
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
 
         await tx
           .update(bookings)

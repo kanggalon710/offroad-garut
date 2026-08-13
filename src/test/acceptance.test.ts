@@ -6,6 +6,7 @@
  * Hanya panggilan keluar (Midtrans, Fonnte) yang di-stub, karena
  * keduanya butuh kredensial berbayar.
  */
+import { randomUUID } from "node:crypto";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -67,25 +68,31 @@ function tanggalDepan(offsetHari: number): string {
 }
 
 beforeAll(async () => {
-  const [budi] = await db
+  const budiId = randomUUID();
+  await db
     .insert(users)
     .values({
+      id: budiId,
       email: `budi.uji.${Date.now()}@contoh.id`,
       name: "Budi Santoso",
       emailVerified: true,
       role: "customer",
-    })
-    .returning();
+    });
 
-  const [siti] = await db
+  const [budi] = await db.select().from(users).where(eq(users.id, budiId)).limit(1);
+
+  const sitiId = randomUUID();
+  await db
     .insert(users)
     .values({
+      id: sitiId,
       email: `siti.uji.${Date.now()}@contoh.id`,
       name: "Siti Rahayu",
       emailVerified: true,
       role: "customer",
-    })
-    .returning();
+    });
+
+  const [siti] = await db.select().from(users).where(eq(users.id, sitiId)).limit(1);
 
   const [owner] = await db
     .select()

@@ -3,7 +3,7 @@
  * Menembak handler webhook sungguhan dengan payload bertanda tangan
  * sah, lalu memeriksa perubahan di database dan pemanggilan Fonnte.
  */
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -111,15 +111,18 @@ async function buatPesanan(paxCount = 3, tanggalOffset = 30) {
 }
 
 beforeAll(async () => {
-  const [budi] = await db
+  const budiId = randomUUID();
+  await db
     .insert(users)
     .values({
+      id: budiId,
       email: `webhook.uji.${Date.now()}@contoh.id`,
       name: "Budi Santoso",
       emailVerified: true,
       role: "customer",
-    })
-    .returning();
+    });
+
+  const [budi] = await db.select().from(users).where(eq(users.id, budiId)).limit(1);
 
   const [pkg] = await db
     .select()

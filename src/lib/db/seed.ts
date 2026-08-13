@@ -1,13 +1,13 @@
 /**
  * Penyemaian data awal.
- * Jalankan dengan: pnpm db:seed
+ * Jalankan dengan: npm run db:seed
  *
- * Aman diulang: setiap penyisipan memakai onConflictDoNothing, jadi
- * menjalankannya dua kali tidak menggandakan data.
+ * Aman diulang: setiap penyisipan mengecek ketersediaan data terlebih dahulu.
  */
 // Wajib paling atas: memuat .env.local sebelum koneksi database dibuat.
 import "./load-env";
 
+import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { db } from "./index";
@@ -31,12 +31,6 @@ const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Admin Offroad";
 const MEETING_POINT_NAME = "Basecamp Cikuray Adventure";
 
 async function seedMeetingPoints() {
-  /**
-   * Dicek berdasarkan nama, bukan lewat onConflictDoNothing.
-   * Tabel meeting_points tidak punya batasan unik (mengikuti DDL PRD §4),
-   * jadi tanpa pemeriksaan ini setiap kali seed dijalankan akan lahir
-   * satu titik kumpul kembar.
-   */
   const [existing] = await db
     .select({ id: meetingPoints.id })
     .from(meetingPoints)
@@ -45,18 +39,18 @@ async function seedMeetingPoints() {
 
   if (existing) return existing.id;
 
-  const [point] = await db
-    .insert(meetingPoints)
-    .values({
-      name: MEETING_POINT_NAME,
-      address:
-        "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
-      location: { lng: 107.7891, lat: -7.3186 },
-      isActive: true,
-    })
-    .returning();
+  const id = randomUUID();
+  await db.insert(meetingPoints).values({
+    id,
+    name: MEETING_POINT_NAME,
+    address:
+      "Jl. Raya Cikajang No. 88, Cikajang, Kabupaten Garut, Jawa Barat",
+    latitude: "-7.318600",
+    longitude: "107.789100",
+    isActive: true,
+  });
 
-  return point?.id ?? null;
+  return id;
 }
 
 const packageSeeds = [
@@ -112,25 +106,30 @@ const packageSeeds = [
 
 async function seedPackages() {
   for (const seed of packageSeeds) {
-    const [inserted] = await db
-      .insert(packages)
-      .values({
-        name: seed.name,
-        slug: seed.slug,
-        description: seed.description,
-        durationHours: seed.durationHours,
-        pricePerPaxIdr: seed.pricePerPaxIdr,
-        minPax: seed.minPax,
-        maxPax: seed.maxPax,
-        isActive: true,
-      })
-      .onConflictDoNothing()
-      .returning();
+    const [existing] = await db
+      .select({ id: packages.id })
+      .from(packages)
+      .where(eq(packages.slug, seed.slug))
+      .limit(1);
 
-    if (!inserted) continue;
+    if (existing) continue;
+
+    const packageId = randomUUID();
+    await db.insert(packages).values({
+      id: packageId,
+      name: seed.name,
+      slug: seed.slug,
+      description: seed.description,
+      durationHours: seed.durationHours,
+      pricePerPaxIdr: seed.pricePerPaxIdr,
+      minPax: seed.minPax,
+      maxPax: seed.maxPax,
+      isActive: true,
+    });
 
     await db.insert(packageGalleries).values({
-      packageId: inserted.id,
+      id: randomUUID(),
+      packageId,
       imageUrl: seed.image,
       alt: seed.alt,
       isPrimary: true,
@@ -148,7 +147,22 @@ const jeepSeeds = [
 ];
 
 async function seedJeeps() {
-  await db.insert(jeeps).values(jeepSeeds).onConflictDoNothing();
+  for (const seed of jeepSeeds) {
+    const [existing] = await db
+      .select({ id: jeeps.id })
+      .from(jeeps)
+      .where(eq(jeeps.plateNumber, seed.plateNumber))
+      .limit(1);
+
+    if (existing) continue;
+
+    await db.insert(jeeps).values({
+      id: randomUUID(),
+      plateNumber: seed.plateNumber,
+      name: seed.name,
+      capacity: seed.capacity,
+    });
+  }
 }
 
 /**
