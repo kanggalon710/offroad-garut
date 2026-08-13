@@ -50,6 +50,8 @@ function kodeDari(error: unknown): string | null {
 }
 
 export function diagnosaDatabase(error: unknown): DatabaseDiagnosis {
+  // Membaca process.env mentah secara sengaja agar fungsi ini tetap bisa
+  // mendiagnosa saat DATABASE_URL belum valid/kosong tanpa crash di validation layer.
   const url = process.env.DATABASE_URL ?? "";
 
   if (!url) {

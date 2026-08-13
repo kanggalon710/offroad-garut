@@ -11,17 +11,9 @@ pemilik project.
 
 ## Prioritas tinggi
 
-- [ ] **`src/env.ts` tidak pernah dipakai.** Skema `@t3-oss/env-nextjs` sudah lengkap dan
-      tervalidasi, tapi tidak ada satu file pun yang mengimpornya. Semua konsumen membaca
-      `process.env` mentah di 30-an tempat. Yang paling berbahaya: `src/lib/auth.ts`
-      memakai `?? ""` sehingga Google client id yang hilang jadi string kosong dan aplikasi
-      tetap boot dalam keadaan rusak, lalu `src/server/routers/booking.ts` dan
-      `src/app/api/webhooks/midtrans/route.ts` menginterpolasi `NEXT_PUBLIC_APP_URL` tanpa
-      penjagaan sehingga bisa menghasilkan URL `"undefined/ticket/..."` yang dikirim ke
-      pelanggan lewat WhatsApp.
-      **Rencana:** ganti semua pembacaan jadi `import { env } from "@/env"`, hapus semua
-      fallback `?? ""`, sisakan `process.env` hanya di `src/env.ts`, `drizzle.config.ts`,
-      `server.js`, `scripts/*.cjs`, dan `src/test/**`.
+- [x] 2026-08-13 **Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`).**
+      Mengganti pembacaan mentah di seluruh modul aplikasi dengan `import { env } from "@/env"`,
+      menghapus fallback berbahaya `?? ""`, dan menambahkan variabel `SEED_*` ke skema `env.ts`.
 
 - [ ] **`getPackageById` tidak menyaring paket terhapus.** Di
       `src/server/routers/booking.ts`, prosedur pengambilan paket berdasarkan id tidak
@@ -89,6 +81,7 @@ pemilik project.
 
 ## Selesai
 
+- [x] 2026-08-13 Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`). Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-12 Perbaikan bug status pembayaran Midtrans (expired URL & sinkronisasi UI)
 - [x] 2026-08-12 Kalender ketersediaan real-time di form booking (menampilkan tanggal penuh)
 - [x] 2026-08-11 Standar pengembangan lintas AI agent (global + project). Lihat

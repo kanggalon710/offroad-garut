@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Script from "next/script";
 import { notFound } from "next/navigation";
 
+import { env } from "@/env";
 import { ETicketQR } from "@/components/domain/e-ticket-qr";
 import { ResumePaymentButton } from "@/components/domain/resume-payment-button";
 import { SyncTicketStatus } from "@/components/domain/sync-ticket-status";
@@ -79,8 +80,8 @@ export default async function TicketPage({ params }: PageProps) {
 
       {!isPaid && !isCancelled ? (
         <Script
-          src={process.env.NEXT_PUBLIC_MIDTRANS_URL}
-          data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+          src={env.NEXT_PUBLIC_MIDTRANS_URL}
+          data-client-key={env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
           strategy="lazyOnload"
         />
       ) : null}

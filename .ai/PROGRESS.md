@@ -1,3 +1,14 @@
+## 2026-08-13 - Migrasi pembacaan process.env ke T3 Env (@/env)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Mencegah fallback berbahaya `?? ""` (misal Google OAuth client id kosong yang meloloskan boot aplikasi rusak) dan interpolasi `NEXT_PUBLIC_APP_URL` yang bisa menghasilkan URL `"undefined/ticket/..."`.
+**Perubahan:**
+- Menambahkan variabel `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, dan `SEED_ADMIN_NAME` ke skema `server` dan `runtimeEnv` pada `src/env.ts`.
+- Mengganti semua pembacaan `process.env` mentah di kode aplikasi (`src/lib/auth.ts`, `auth-client.ts`, `db/index.ts`, `db/seed.ts`, `db/sync.ts`, `midtrans.ts`, `r2.ts`, `whatsapp.ts`, `server/routers/admin.ts`, `booking.ts`, `trpc/client.tsx`, `app/api/webhooks/midtrans/route.ts`, `app/layout.tsx`, `app/(public)/(beranda)/page.tsx`, `booking/page.tsx`, `ticket/[order_id]/page.tsx`) dengan `import { env } from "@/env"`.
+- Menghapus fallback berbahaya `?? ""` (seperti pada Google client id/secret di auth.ts) dan guard IIFE redundan di `booking.ts` finishUrl.
+- Menyisakan pembacaan `process.env` mentah secara sengaja hanya pada file yang diizinkan: `src/env.ts` (pemetaan runtimeEnv), `drizzle.config.ts`, `server.js`, `scripts/*.cjs`, `src/test/**`, serta `src/lib/db/errors.ts` (fungsi diagnosa koneksi DB agar tidak crash saat validasi env).
+**File:** src/env.ts, src/lib/auth.ts, src/lib/auth-client.ts, src/lib/db/index.ts, src/lib/db/seed.ts, src/lib/db/sync.ts, src/lib/midtrans.ts, src/lib/r2.ts, src/lib/whatsapp.ts, src/server/routers/admin.ts, src/server/routers/booking.ts, src/trpc/client.tsx, src/app/api/webhooks/midtrans/route.ts, src/app/layout.tsx, src/app/(public)/(beranda)/page.tsx, src/app/(public)/booking/page.tsx, src/app/(public)/ticket/[order_id]/page.tsx, .ai/PROGRESS.md, .ai/TODO.md
+**Catatan:** `npm run typecheck`, `npm run lint`, dan `SKIP_ENV_VALIDATION=1 npm run build` semuanya 0 error dan sukses.
+
 ## 2026-08-13 - Migrasi basis data dari PostgreSQL ke MariaDB/MySQL untuk kompatibilitas cPanel
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Branch main-sql bertujuan menjalankan aplikasi di shared-hosting cPanel yang hanya mendukung MariaDB/MySQL, bukan PostgreSQL. PostGIS dan skema awal tidak kompatibel dengan batasan cPanel.

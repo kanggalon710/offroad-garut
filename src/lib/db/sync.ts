@@ -9,6 +9,8 @@
  */
 import mysql from "mysql2/promise";
 
+import { env } from "@/env";
+
 async function buatKoneksi(connectionString: string) {
   return mysql.createConnection({
     uri: connectionString,
@@ -117,7 +119,7 @@ async function sinkronTabel(
  * Fungsi utama sinkronisasi. Memerlukan MAIN_DATABASE_URL di env.
  */
 export async function syncFromMainDb() {
-  const MAIN_DATABASE_URL = process.env.MAIN_DATABASE_URL;
+  const MAIN_DATABASE_URL = env.MAIN_DATABASE_URL;
 
   if (!MAIN_DATABASE_URL) {
     throw new Error(
@@ -126,7 +128,7 @@ export async function syncFromMainDb() {
   }
 
   const connSrc = await buatKoneksi(MAIN_DATABASE_URL);
-  const connDst = await buatKoneksi(process.env.DATABASE_URL!);
+  const connDst = await buatKoneksi(env.DATABASE_URL);
 
   try {
     console.log("Memulai sinkronisasi data master dari MAIN_DB...");

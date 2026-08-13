@@ -1,5 +1,6 @@
 import "server-only";
 
+import { env } from "@/env";
 import { formatIDR, formatJam, formatTanggal } from "@/lib/utils";
 
 /**
@@ -18,7 +19,7 @@ async function sendWhatsApp(
   target: string,
   message: string,
 ): Promise<SendResult> {
-  const token = process.env.FONNTE_TOKEN;
+  const token = env.FONNTE_TOKEN;
   if (!token) return { ok: false, reason: "FONNTE_TOKEN belum diisi" };
 
   try {
@@ -102,7 +103,7 @@ export type NewOrderAlert = {
 export async function sendNewOrderAlertToOwner(
   data: NewOrderAlert,
 ): Promise<SendResult> {
-  const owner = process.env.OWNER_WHATSAPP;
+  const owner = env.OWNER_WHATSAPP;
   if (!owner) return { ok: false, reason: "OWNER_WHATSAPP belum diisi" };
 
   const message = [

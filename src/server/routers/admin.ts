@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, count, desc, eq, exists, inArray, ne, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env";
 import { TIME_SLOT_VALUES } from "@/lib/constants";
 import { catatAudit } from "@/lib/db/audit";
 import {
@@ -326,7 +327,7 @@ export const adminRouter = router({
 
   /** Cek apakah fitur sync DB tersedia (hanya dev yang punya MAIN_DATABASE_URL). */
   getSyncAvailability: adminProcedure.query(async () => {
-    return { available: Boolean(process.env.MAIN_DATABASE_URL) };
+    return { available: Boolean(env.MAIN_DATABASE_URL) };
   }),
 
   /**
@@ -338,7 +339,7 @@ export const adminRouter = router({
   syncFromMainDb: adminProcedure.mutation(async ({ ctx }) => {
     const { syncFromMainDb } = await import("@/lib/db/sync");
 
-    if (!process.env.MAIN_DATABASE_URL) {
+    if (!env.MAIN_DATABASE_URL) {
       throw new TRPCError({
         code: "FORBIDDEN",
         message:

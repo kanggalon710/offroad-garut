@@ -29,6 +29,11 @@ export const env = createEnv({
       .string()
       .regex(/^\+62\d{8,14}$/, "Nomor owner harus format +62"),
 
+    /** Variabel untuk penyemaian data awal (hanya digunakan oleh npm run db:seed) */
+    SEED_ADMIN_EMAIL: z.string().email().optional(),
+    SEED_ADMIN_PASSWORD: z.string().min(1).optional(),
+    SEED_ADMIN_NAME: z.string().min(1).optional(),
+
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
@@ -60,6 +65,9 @@ export const env = createEnv({
     R2_BUCKET: process.env.R2_BUCKET,
     FONNTE_TOKEN: process.env.FONNTE_TOKEN,
     OWNER_WHATSAPP: process.env.OWNER_WHATSAPP,
+    SEED_ADMIN_EMAIL: process.env.SEED_ADMIN_EMAIL,
+    SEED_ADMIN_PASSWORD: process.env.SEED_ADMIN_PASSWORD,
+    SEED_ADMIN_NAME: process.env.SEED_ADMIN_NAME,
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_MIDTRANS_URL: process.env.NEXT_PUBLIC_MIDTRANS_URL,

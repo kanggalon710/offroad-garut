@@ -10,6 +10,7 @@ import "./load-env";
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 
+import { env } from "@/env";
 import { db } from "./index";
 import {
   jeeps,
@@ -24,9 +25,9 @@ import {
  * penyemaian di server produksi tidak memakai kata sandi yang
  * tertulis di dalam repositori.
  */
-const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@offroad.id";
-const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? "Galon@123";
-const ADMIN_NAME = process.env.SEED_ADMIN_NAME ?? "Admin Offroad";
+const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL ?? "admin@offroad.id";
+const ADMIN_PASSWORD = env.SEED_ADMIN_PASSWORD ?? "Galon@123";
+const ADMIN_NAME = env.SEED_ADMIN_NAME ?? "Admin Offroad";
 
 const MEETING_POINT_NAME = "Basecamp Cikuray Adventure";
 
@@ -201,7 +202,7 @@ async function seedAdmin() {
     .where(eq(users.email, ADMIN_EMAIL));
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);
-  if (!process.env.SEED_ADMIN_PASSWORD) {
+  if (!env.SEED_ADMIN_PASSWORD) {
     console.log(
       `Kata sandi bawaan: ${ADMIN_PASSWORD}. Ganti sebelum dipakai di produksi, atau setel SEED_ADMIN_PASSWORD sebelum menjalankan seed.`,
     );

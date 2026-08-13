@@ -3,6 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env";
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
 import {
   bookings,
@@ -340,13 +341,7 @@ export const bookingRouter = router({
               name: pkg.name,
             },
           ],
-          finishUrl: (() => {
-            // NEXT_PUBLIC_APP_URL harus diisi di .env.local. Kalau kosong,
-            // Midtrans akan redirect ke "undefined/ticket/..." yang tidak valid.
-            const base = process.env.NEXT_PUBLIC_APP_URL;
-            if (!base) throw new Error("NEXT_PUBLIC_APP_URL belum diisi di variabel lingkungan");
-            return `${base}/ticket/${booking.bookingCode}`;
-          })(),
+          finishUrl: `${env.NEXT_PUBLIC_APP_URL}/ticket/${booking.bookingCode}`,
         });
 
         // Token disimpan supaya tombol "Lanjutkan Pembayaran" di halaman

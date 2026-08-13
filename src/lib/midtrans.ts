@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 
+import { env } from "@/env";
+
 /**
  * Wrapper tipis untuk Midtrans Snap v3.
  * Ditulis dengan fetch bertipe alih-alih SDK resmi karena paket
@@ -13,7 +15,7 @@ const SANDBOX_SNAP_URL = "https://app.sandbox.midtrans.com/snap/v1/transactions"
 const PRODUCTION_SNAP_URL = "https://app.midtrans.com/snap/v1/transactions";
 
 function serverKey(): string {
-  const key = process.env.MIDTRANS_SERVER_KEY;
+  const key = env.MIDTRANS_SERVER_KEY;
   if (!key) throw new Error("MIDTRANS_SERVER_KEY belum diisi");
   return key;
 }

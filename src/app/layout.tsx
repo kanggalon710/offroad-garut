@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
 import { TRPCProvider } from "@/trpc/client";
+import { env } from "@/env";
 
 import "./globals.css";
 
@@ -19,9 +20,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
-  ),
+  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
   title: {
     default: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
     template: "%s | Offroad Garut",
