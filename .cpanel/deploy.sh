@@ -13,9 +13,8 @@ echo "🚀 Starting deployment..."
 npm ci --omit=dev
 
 # 2. Build the Next.js app
-# cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node
-# dan pakai --no-turbopack agar Wasm OOM tidak terjadi.
-NODE_OPTIONS="--max-old-space-size=1024" npx next build --no-turbopack
+# cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node.
+NODE_OPTIONS="--max-old-space-size=1024" npx next build
 
 # 3. Restart the Node.js app via cPanel's API
 touch ~/nodejs/offroad-garut/restart.txt

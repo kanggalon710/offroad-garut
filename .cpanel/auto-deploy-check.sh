@@ -22,9 +22,8 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
 
     git pull origin main-sql --quiet
     npm ci --omit=dev
-    # cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node
-    # dan pakai --no-turbopack agar Wasm OOM tidak terjadi.
-    NODE_OPTIONS="--max-old-space-size=1024" npx next build --no-turbopack
+    # cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node.
+    NODE_OPTIONS="--max-old-space-size=1024" npx next build
     mkdir -p tmp
     touch tmp/restart.txt
     touch restart.txt
