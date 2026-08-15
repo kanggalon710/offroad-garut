@@ -1,3 +1,10 @@
+## 2026-08-15 - Skrip set-admin.cjs untuk cPanel (tsx Wasm OOM)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** `npm run db:seed` gagal di cPanel Terminal karena `tsx` (parser Wasm) kena `RangeError: WebAssembly.instantiate(): Out of memory` akibat RLIMIT_AS ketat. Pendaftaran akun lewat endpoint `/api/auth/sign-up/email` berhasil, jadi yang tersisa hanya menyetel role & emailVerified.
+**Perubahan:**
+- `scripts/set-admin.cjs`: Script CJS murni (hanya mysql2) yang mengubah `users.role = 'owner'` dan `emailVerified = 1` untuk `SEED_ADMIN_EMAIL` (bawaan `jabnetid@gmail.com`). Tanpa tsx/Wasm, aman dijalankan di cPanel Terminal.
+**File:** scripts/set-admin.cjs
+
 ## 2026-08-15 - Fitur Galeri & Album (Patreon-Style Secret Album Pages)
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pemilik butuh galeri dokumentasi (foto, video YouTube, PDF, tautan Google Drive) yang bisa dikelola sendiri lewat web. Album publik tampil di landing page, sedangkan album privat untuk pelanggan/keluarga diakses via link rahasia seperti halaman Patreon.
