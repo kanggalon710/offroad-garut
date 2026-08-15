@@ -1,3 +1,11 @@
+## 2026-08-15 - Perbaikan SWC Wasm OOM di cPanel Shared Hosting (SWC Minify & CPU Limit)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** cPanel Shared Hosting membatasi memori virtual (`RLIMIT_AS` ~1.5GB). `NODE_OPTIONS=1024` terlalu tinggi sehingga SWC (Rust compiler Next.js) gagal mengalokasikan Wasm memory (`Out of memory`).
+**Perubahan:**
+- `next.config.ts`: Menambahkan `swcMinify: false` dan `experimental.cpus: 1` untuk mencegah SWC spawn banyak worker thread paralel yang memicu OOM Wasm.
+- `.cpanel/deploy.sh`, `.cpanel/auto-deploy-check.sh`, `.cpanel.yml`: Mengubah heap size menjadi `NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64"`, menambah `NEXT_TELEMETRY_DISABLED=1`, dan menghapus opsi `--no-turbopack` yang tidak valid.
+**File:** next.config.ts, .cpanel/deploy.sh, .cpanel/auto-deploy-check.sh, .cpanel.yml, .ai/PROGRESS.md
+
 ## 2026-08-15 - Tautan WhatsApp FAQ, Pembaruan Kredensial Admin, & Pembersihan UI Login
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pelanggan butuh tautan langsung ke WhatsApp dari section FAQ, akun pengelola default diperbarui ke `jabnetid@gmail.com` / `Galon@123`, dan UI login dibersihkan dari placeholder/teks redundan.

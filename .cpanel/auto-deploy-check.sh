@@ -22,8 +22,9 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
 
     git pull origin main-sql --quiet
     npm ci --omit=dev
-    # cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node.
-    NODE_OPTIONS="--max-old-space-size=1024" npx next build
+    export NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64"
+    export NEXT_TELEMETRY_DISABLED=1
+    npx next build
     mkdir -p tmp
     touch tmp/restart.txt
     touch restart.txt
