@@ -110,6 +110,7 @@ beforeAll(async () => {
     name: budi.name,
     role: "customer",
     phone: null,
+    alternativePhone: null,
   };
   turisLain = {
     id: siti.id,
@@ -117,6 +118,7 @@ beforeAll(async () => {
     name: siti.name,
     role: "customer",
     phone: null,
+    alternativePhone: null,
   };
   pengelola = {
     id: owner.id,
@@ -124,6 +126,7 @@ beforeAll(async () => {
     name: owner.name,
     role: "owner",
     phone: owner.phone,
+    alternativePhone: null,
   };
 
   const [pkg] = await db

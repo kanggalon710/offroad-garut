@@ -1,3 +1,16 @@
+## 2026-08-15 - Pengaturan nomor WhatsApp utama & alternatif + auto-fill form booking
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pengguna butuh opsi menyimpan nomor WhatsApp utama dan alternatif di halaman `/pengaturan`, dan nomor yang tersimpan otomatis mengisi kolom Data Pemesan saat melakukan booking paket offroad.
+**Perubahan:**
+- `drizzle/0001_add_alternative_phone.sql`: Menambahkan migrasi SQL `ALTER TABLE users ADD COLUMN alternative_phone varchar(20);`.
+- `src/lib/db/schema.ts`: Menambahkan kolom `alternativePhone` pada skema tabel `users`.
+- `src/lib/auth.ts`: Daftarkan `alternativePhone` di konfigurasi tambahan `better-auth`.
+- `src/server/routers/user.ts`: Menambahkan prosedur tRPC `user.getProfile` dan `user.updatePhones` untuk membaca dan memperbarui `phone` serta `alternativePhone` (dengan sanitasi `normalizePhone` & validasi keunikan nomor utama).
+- `src/server/trpc.ts`: Menambahkan `alternativePhone` pada tipe konteks sesi tRPC.
+- `src/app/(public)/pengaturan/page.tsx` & `client.tsx`: Menambahkan kartu form "Nomor WhatsApp" untuk menginput nomor utama dan alternatif.
+- `src/app/(public)/booking/page.tsx`: Otomatis membaca nomor tersimpan pengguna via `api.user.getProfile()` dan mengirimkannya sebagai `defaultPhone` ke `BookingForm`.
+**File:** drizzle/0001_add_alternative_phone.sql, src/lib/db/schema.ts, src/lib/auth.ts, src/server/routers/user.ts, src/server/trpc.ts, src/app/(public)/pengaturan/page.tsx, src/app/(public)/pengaturan/client.tsx, src/app/(public)/booking/page.tsx, src/test/acceptance.test.ts, src/test/webhook.test.ts, .ai/PROGRESS.md
+
 ## 2026-08-15 - Skrip Otomatisasi Deployment cPanel (.cpanel/deploy.sh)
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pengelola ingin perubahan di Git otomatis ter-build dan di-restart saat `git pull` di cPanel Git Version Control tanpa harus mengklik tombol restart aplikasi secara manual.

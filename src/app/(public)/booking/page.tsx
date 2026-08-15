@@ -49,10 +49,17 @@ export default async function BookingPage({ searchParams }: PageProps) {
       env.NODE_ENV === "development" ? diagnosis.message : null;
   }
 
-  const userPhone =
-    typeof (session.user as { phone?: unknown }).phone === "string"
-      ? (session.user as unknown as { phone: string }).phone
-      : "";
+  let userPhone = "";
+  try {
+    const api = await getServerApi();
+    const profile = await api.user.getProfile();
+    if (profile.phone) userPhone = profile.phone;
+  } catch {
+    // Fallback bila profile gagal dimuat
+    if (typeof (session.user as { phone?: unknown }).phone === "string") {
+      userPhone = (session.user as unknown as { phone: string }).phone;
+    }
+  }
 
   return (
     <>

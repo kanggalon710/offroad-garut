@@ -65,6 +65,12 @@ export const users = mysqlTable(
      * (PRD §6 CustomerInfoForm) dan divalidasi ketat di sana.
      */
     phone: varchar("phone", { length: 20 }).unique(),
+    /**
+     * Nomor kontak alternatif. Tidak unik karena satu nomor bisa dipakai
+     * banyak akun (mis. telepon rumah kantor), dan tidak wajib diisi.
+     * Dipakai Fonnte bila nomor utama sedang tidak bisa menerima WA.
+     */
+    alternativePhone: varchar("alternative_phone", { length: 20 }),
     passwordHash: varchar("password_hash", { length: 255 }),
     role: mysqlEnum("role", ["customer", "admin", "owner"])
       .notNull()

@@ -15,6 +15,7 @@ export type TRPCContext = {
     name: string;
     role: UserRole;
     phone: string | null;
+    alternativePhone: string | null;
   } | null;
 };
 
@@ -39,6 +40,10 @@ export async function createTRPCContext(opts: {
           phone:
             typeof (session.user as { phone?: unknown }).phone === "string"
               ? (session.user as unknown as { phone: string }).phone
+              : null,
+          alternativePhone:
+            typeof (session.user as { alternativePhone?: unknown }).alternativePhone === "string"
+              ? (session.user as unknown as { alternativePhone: string }).alternativePhone
               : null,
         }
       : null,

@@ -139,6 +139,7 @@ beforeAll(async () => {
     name: budi.name,
     role: "customer",
     phone: null,
+    alternativePhone: null,
   };
   paketId = pkg.id;
   meetingPointId = point.id;

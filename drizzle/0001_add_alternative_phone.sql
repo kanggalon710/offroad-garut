@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD COLUMN `alternative_phone` varchar(20);
