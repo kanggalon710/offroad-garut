@@ -1,3 +1,11 @@
+## 2026-08-15 - Penanganan Wasm OOM saat build cPanel di NODE_OPTIONS
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Node.js di cPanel shared hosting gagal melakukan `npx next build` karena batas memori virtual (`RLIMIT_AS`) memicu `WebAssembly.instantiate(): Out of memory`.
+**Perubahan:**
+- Memperbarui `.cpanel.yml`, `.cpanel/deploy.sh`, dan `.cpanel/auto-deploy-check.sh` untuk menggunakan `NODE_OPTIONS="--max-old-space-size=1024" npx next build --no-turbopack`.
+- Memastikan `source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate` dijalankan sebelum skrip build cPanel.
+**File:** .cpanel.yml, .cpanel/deploy.sh, .cpanel/auto-deploy-check.sh
+
 ## 2026-08-15 - Pengaturan nomor WhatsApp utama & alternatif + auto-fill form booking
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pengguna butuh opsi menyimpan nomor WhatsApp utama dan alternatif di halaman `/pengaturan`, dan nomor yang tersimpan otomatis mengisi kolom Data Pemesan saat melakukan booking paket offroad.
