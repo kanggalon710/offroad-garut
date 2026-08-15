@@ -1,3 +1,14 @@
+## 2026-08-15 - Video YouTube dan gambar baru di hero landing
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pemilik minta bukti visual gerak di halaman utama tanpa menyimpan file video ke repo GitHub. Video disematkan dari YouTube (hosting eksternal), sehingga tidak ada artefak biner di git.
+**Perubahan:**
+- `src/components/landing/hero.tsx`: gambar latar hero diganti dari `/images/hero-offroad-garut.jpg` ke `/images/real_img/jeep_hero.jpg`.
+- Layout hero diubah menjadi grid dua kolom di layar besar (`lg:grid-cols-12`, teks `7` kolom, video `5` kolom), bertumpuk vertikal di mobile (mobile-first).
+- Video YouTube non-autoplay disematkan lewat `<iframe>` (ID `XHc85Zws-S0`) di panel kanan, rasio 16:9 responsif, dengan `title` dan `allowFullScreen`.
+- Overlay gradien diubah dari kiri-kanan pekat menjadi merata di mobile dan kiri-kanan di desktop supaya teks tetap terbaca.
+**File:** src/components/landing/hero.tsx
+**Catatan:** `npm run typecheck`, `npm run lint`, dan `SKIP_ENV_VALIDATION=1 npm run build` sukses (build terverifikasi 16 route).
+
 ## 2026-08-13 - Migrasi pembacaan process.env ke T3 Env (@/env)
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Mencegah fallback berbahaya `?? ""` (misal Google OAuth client id kosong yang meloloskan boot aplikasi rusak) dan interpolasi `NEXT_PUBLIC_APP_URL` yang bisa menghasilkan URL `"undefined/ticket/..."`.

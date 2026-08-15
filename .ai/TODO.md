@@ -81,6 +81,7 @@ pemilik project.
 
 ## Selesai
 
+- [x] 2026-08-15 Video YouTube (ID `XHc85Zws-S0`) dan gambar baru (`jeep_hero.jpg`) di hero landing page. Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-13 Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`). Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-12 Perbaikan bug status pembayaran Midtrans (expired URL & sinkronisasi UI)
 - [x] 2026-08-12 Kalender ketersediaan real-time di form booking (menampilkan tanggal penuh)
