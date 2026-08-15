@@ -206,7 +206,7 @@ export function PengaturanClient({
             <div className="min-w-0 flex-1 space-y-1">
               <h2 className="text-base font-bold text-foreground">Nomor WhatsApp</h2>
               <p className="text-small text-muted-foreground">
-                Nomor ini otomatis mengisi kolom "Data Pemesan" di halaman
+                Nomor ini otomatis mengisi kolom Data Pemesan di halaman
                 booking. Nomor alternatif digunakan jika nomor utama tidak bisa
                 menerima pesan.
               </p>

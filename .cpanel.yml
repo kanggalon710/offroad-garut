@@ -1,0 +1,8 @@
+---
+deployment:
+  tasks:
+    - npm ci --omit=dev
+    - npm run build
+    - mkdir -p tmp
+    - touch tmp/restart.txt
+    - touch restart.txt
