@@ -3,7 +3,7 @@ deployment:
   tasks:
     - source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
     - npm ci --omit=dev
-    - npm run build
+    - NODE_OPTIONS="--max-old-space-size=1024" npx next build --no-turbopack
     - mkdir -p tmp
     - touch tmp/restart.txt
     - touch restart.txt

@@ -5,7 +5,6 @@
 set -e
 
 # Activate cPanel Node.js virtual environment
-# Adjust path if your Node.js app version differs (check with: ls ~/nodevenv/repositories/offroad-garut/)
 source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
 
 echo "🚀 Starting deployment..."
@@ -14,10 +13,11 @@ echo "🚀 Starting deployment..."
 npm ci --omit=dev
 
 # 2. Build the Next.js app
-npm run build
+# cPanel shared hosting membatasi memori (RLIMIT_AS). Naikkan heap Node
+# dan pakai --no-turbopack agar Wasm OOM tidak terjadi.
+NODE_OPTIONS="--max-old-space-size=1024" npx next build --no-turbopack
 
 # 3. Restart the Node.js app via cPanel's API
-# This touches the restart.txt file that cPanel watches
 touch ~/nodejs/offroad-garut/restart.txt
 
 echo "✅ Deployment complete. App will restart automatically."
