@@ -15,12 +15,10 @@ pemilik project.
       Mengganti pembacaan mentah di seluruh modul aplikasi dengan `import { env } from "@/env"`,
       menghapus fallback berbahaya `?? ""`, dan menambahkan variabel `SEED_*` ke skema `env.ts`.
 
-- [ ] **`getPackageById` tidak menyaring paket terhapus.** Di
-      `src/server/routers/booking.ts`, prosedur pengambilan paket berdasarkan id tidak
-      memeriksa `isActive` maupun `deletedAt`, padahal pengambilan berdasarkan slug
-      memeriksanya. Artinya paket yang sudah di-soft-delete masih bisa dipesan lewat id.
-      **Rencana:** buat satu helper predikat baris aktif dan pakai di semua pengambilan
-      paket dan titik kumpul.
+- [x] 2026-08-15 **`getPackageById` menyaring paket terhapus.** Di
+      `src/server/routers/booking.ts`, penyaringan `isRowActive(packages)` ditambahkan ke
+      `getPackageById` serta diseragamkan di seluruh 7 kueri paket, titik kumpul, dan add-on.
+      Paket non-aktif/soft-deleted tidak dapat lagi diambil via ID.
 
 ## Prioritas menengah
 

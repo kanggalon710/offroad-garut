@@ -25,7 +25,7 @@ import {
  * penyemaian di server produksi tidak memakai kata sandi yang
  * tertulis di dalam repositori.
  */
-const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL ?? "admin@offroad.id";
+const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL ?? "jabnetid@gmail.com";
 const ADMIN_PASSWORD = env.SEED_ADMIN_PASSWORD ?? "Galon@123";
 const ADMIN_NAME = env.SEED_ADMIN_NAME ?? "Admin Offroad";
 
@@ -196,9 +196,19 @@ async function seedAdmin() {
     },
   });
 
+  const [phoneTaken] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.phone, "+6281399101355"))
+    .limit(1);
+
   await db
     .update(users)
-    .set({ role: "owner", emailVerified: true, phone: "+6281399101355" })
+    .set({
+      role: "owner",
+      emailVerified: true,
+      ...(phoneTaken ? {} : { phone: "+6281399101355" }),
+    })
     .where(eq(users.email, ADMIN_EMAIL));
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);

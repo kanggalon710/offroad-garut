@@ -1,3 +1,27 @@
+## 2026-08-15 - Tautan WhatsApp FAQ, Pembaruan Kredensial Admin, & Pembersihan UI Login
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pelanggan butuh tautan langsung ke WhatsApp dari section FAQ, akun pengelola default diperbarui ke `jabnetid@gmail.com` / `Galon@123`, dan UI login dibersihkan dari placeholder/teks redundan.
+**Perubahan:**
+- `src/components/landing/faq.tsx`: Teks "Masih ragu? Chat 0813 9910 1355..." diubah menjadi tautan `<a>` berformat `wa.me/6281399101355` dengan `target="_blank"`.
+- `src/lib/db/seed.ts` & `.env.local` & `.env.example`: Mengubah email admin default dari `admin@offroad.id` ke `jabnetid@gmail.com`, serta menambahkan pengecekan keunikan `phone` saat update admin.
+- `src/app/masuk/page.tsx`: Menghapus teks & tautan "Pengelola rental masuk lewat halaman khusus admin" (navigasi pengelola cukup via footer).
+- `src/app/admin/login/login-form.tsx`: Menghapus `placeholder="admin@offroad.id"` pada input email form login pengelola.
+**File:** src/components/landing/faq.tsx, src/lib/db/seed.ts, .env.local, .env.example, src/app/masuk/page.tsx, src/app/admin/login/login-form.tsx, .ai/PROGRESS.md
+
+## 2026-08-15 - Admin Master Data CRUD & Layanan Tambah (Add-on) Integration
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Admin (pemilik) butuh mengelola master data (Layanan Tambah, Paket, Jeep, Titik Kumpul) dan layanan tambah harus bisa dipilih oleh pelanggan saat booking, serta terintegrasi ke pembayaran Midtrans.
+**Perubahan:**
+- `drizzle/0002_add_add_on_services.sql`: Migrasi tabel `add_on_services` dan `booking_add_ons` (FK ke bookings & add_on_services).
+- `src/lib/db/schema.ts`: Definisi skema Drizzle untuk `addOnServices` dan `bookingAddOns`.
+- `src/server/routers/admin.ts`: Prosedur CRUD admin untuk keempat entitas master (get/create/update/delete) dengan audit logging via `catatAudit`.
+- `src/server/routers/booking.ts`: Menambahkan `getAddOnServices` (publik) dan memperluas `createBooking` menerima `addOns[]`, validasi server-side, insert ke `booking_add_ons`, dan itemisasi di payload Midtrans Snap.
+- `src/components/admin/master-data-client.tsx`: Komponen client tabbed UI untuk CRUD keempat entitas.
+- `src/app/(admin)/master/page.tsx`: Halaman route `/admin/master`.
+- `src/components/admin/admin-header.tsx`: Navigasi tab "Kelola Master Data".
+- `src/test/master-crud.test.ts`: Tes unit memverifikasi prosedur tRPC terdaftar (menggunakan `createCallerFactory`).
+**File:** drizzle/0002_add_add_on_services.sql, src/lib/db/schema.ts, src/server/routers/admin.ts, src/server/routers/booking.ts, src/components/admin/master-data-client.tsx, src/app/(admin)/master/page.tsx, src/components/admin/admin-header.tsx, src/test/master-crud.test.ts, .ai/PROGRESS.md
+
 ## 2026-08-15 - Penanganan Wasm OOM saat build cPanel di NODE_OPTIONS
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Node.js di cPanel shared hosting gagal melakukan `npx next build` karena batas memori virtual (`RLIMIT_AS`) memicu `WebAssembly.instantiate(): Out of memory`.
@@ -58,7 +82,7 @@
 - Memodifikasi src/lib/db/index.ts untuk menggunakan connection pool mysql2 dengan batas 5 koneksi (sesuai limit cPanel)
 - Memperbaiki src/lib/db/errors.ts dan src/test/db-errors.test.ts menggunakan kode kesalahan MySQL/MariaDB
 - Menghapus pnpm lockfile dan beralih ke npm (package-lock.json) untuk integrasi yang lebih baik dengan cPanel Node.js Selector
-- Memperbaiki TypeScript error di src/lib/auth.ts (advanced.generateId) dan cast session.user ke unknown untuk mengakses phone
+- Memperbarui TypeScript error di src/lib/auth.ts (advanced.generateId) dan cast session.user ke unknown untuk mengakses phone
 - Memperbarui README.md, AGENTS.md, dan menambahkan instruksi deploy khusus untuk cPanel (Node.js Selector) di bagian Deployment
 - Menambahkan deviasi PRD ke-6 di DEVIASI-PRD.md (basis data dimigrasi dari PostgreSQL ke MySQL/MariaDB agar lebih mendukung cPanel shared-hosting)
 **File:** drizzle.config.ts, src/lib/db/index.ts, src/lib/db/errors.ts, src/test/db-errors.test.ts, src/lib/auth.ts, src/app/(public)/booking/page.tsx, src/server/trpc.ts, package.json, package-lock.json, README.md, AGENTS.md, DEVIASI-PRD.md
@@ -85,8 +109,6 @@
 **File:** src/server/routers/booking.ts, src/components/domain/booking-form.tsx, src/app/globals.css
 **Catatan:** Kapasitas harian dihitung dari jumlah kapasitas semua jeep aktif. Tanggal yang penuh ditampilkan dengan efek coret dan transparan. Toleransi 1 kursi supaya tidak terlalu sensitif. Preview harus dilakukan di dev server dengan database yang sudah di-seed.
 Format: lihat bagian 13 di `~/.ai/AGENTS.md`.
-
----
 
 ## 2026-08-11 - Standar pengembangan lintas AI agent
 

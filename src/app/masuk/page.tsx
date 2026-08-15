@@ -44,17 +44,6 @@ export default async function MasukPage({ searchParams }: PageProps) {
         <div className="mt-6">
           <MasukClient redirectTo={safeRedirect} />
         </div>
-
-        <p className="mt-6 text-legal text-muted-foreground">
-          Pengelola rental masuk lewat{" "}
-          <Link
-            href="/admin/login"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            halaman khusus admin
-          </Link>
-          .
-        </p>
       </Card>
     </main>
   );

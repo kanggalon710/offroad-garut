@@ -4,8 +4,11 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm"
 import { z } from "zod";
 
 import { env } from "@/env";
+import { isRowActive } from "@/lib/db/active-row";
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
 import {
+  addOnServices,
+  bookingAddOns,
   bookings,
   jeeps,
   meetingPoints,
@@ -26,7 +29,7 @@ export const bookingRouter = router({
       const rows = await ctx.db
         .select()
         .from(packages)
-        .where(and(eq(packages.isActive, true), isNull(packages.deletedAt)))
+        .where(isRowActive(packages))
         .orderBy(asc(packages.pricePerPaxIdr))
         .limit(input?.limit ?? 10);
 
@@ -62,7 +65,7 @@ export const bookingRouter = router({
         .where(
           and(
             isUuid ? eq(packages.id, input.slug) : eq(packages.slug, input.slug),
-            isNull(packages.deletedAt),
+            isRowActive(packages),
           ),
         )
         .limit(1);
@@ -89,7 +92,7 @@ export const bookingRouter = router({
       const [pkg] = await ctx.db
         .select()
         .from(packages)
-        .where(and(eq(packages.id, input.id), isNull(packages.deletedAt)))
+        .where(and(eq(packages.id, input.id), isRowActive(packages)))
         .limit(1);
 
       if (!pkg) {
@@ -105,10 +108,17 @@ export const bookingRouter = router({
     return ctx.db
       .select()
       .from(meetingPoints)
-      .where(
-        and(eq(meetingPoints.isActive, true), isNull(meetingPoints.deletedAt)),
-      )
+      .where(isRowActive(meetingPoints))
       .orderBy(asc(meetingPoints.name));
+  }),
+
+  /** Layanan tambahan aktif yang bisa dipilih saat memesan. Publik. */
+  getAddOnServices: publicProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(addOnServices)
+      .where(isRowActive(addOnServices))
+      .orderBy(asc(addOnServices.priceIdr));
   }),
 
   /**
@@ -231,6 +241,14 @@ export const bookingRouter = router({
         contactName: z.string().min(2, "Nama minimal 2 huruf").max(255),
         contactPhone: z.string().min(8, "Nomor WhatsApp belum lengkap"),
         specialRequests: z.string().max(500).optional(),
+        addOns: z
+          .array(
+            z.object({
+              addOnId: z.string().uuid(),
+              quantity: z.number().int().min(1).max(99),
+            }),
+          )
+          .optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -254,7 +272,7 @@ export const bookingRouter = router({
       const [pkg] = await ctx.db
         .select()
         .from(packages)
-        .where(and(eq(packages.id, input.packageId), eq(packages.isActive, true)))
+        .where(and(eq(packages.id, input.packageId), isRowActive(packages)))
         .limit(1);
 
       if (!pkg) {
@@ -293,9 +311,55 @@ export const bookingRouter = router({
       const totalIdr = pkg.pricePerPaxIdr * input.paxCount;
       const bookingCode = generateBookingCode();
 
+      // Ambil detail add-on services yang dipilih untuk validasi dan
+      // perhitungan harga. Tidak percaya harga dari client.
+      const selectedAddOns =
+        input.addOns && input.addOns.length > 0
+          ? await ctx.db
+              .select()
+              .from(addOnServices)
+              .where(
+                and(
+                  inArray(
+                    addOnServices.id,
+                    input.addOns.map((a) => a.addOnId),
+                  ),
+                  isRowActive(addOnServices),
+                ),
+              )
+          : [];
+
+      const addOnMap = new Map(selectedAddOns.map((a) => [a.id, a]));
+      const addOnItems: {
+        id: string;
+        name: string;
+        price: number;
+        quantity: number;
+      }[] = [];
+      let addOnTotal = 0;
+
+      for (const selection of input.addOns ?? []) {
+        const svc = addOnMap.get(selection.addOnId);
+        if (!svc) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Layanan tambahan tidak ditemukan atau sudah dinonaktifkan.",
+          });
+        }
+        addOnItems.push({
+          id: svc.id,
+          name: svc.name,
+          price: svc.priceIdr,
+          quantity: selection.quantity,
+        });
+        addOnTotal += svc.priceIdr * selection.quantity;
+      }
+
+      const grandTotalIdr = totalIdr + addOnTotal;
+
       const hasil = await ctx.db.transaction(async (tx) => {
         const bookingId = randomUUID();
-        
+
         await tx
           .insert(bookings)
           .values({
@@ -307,7 +371,7 @@ export const bookingRouter = router({
             bookingDate: input.bookingDate,
             timeSlot: input.timeSlot,
             paxCount: input.paxCount,
-            totalIdr,
+            totalIdr: grandTotalIdr,
             status: "awaiting_payment",
             contactName: input.contactName,
             contactPhone: phone,
@@ -323,11 +387,23 @@ export const bookingRouter = router({
           });
         }
 
+        // Simpan add-on yang dipilih ke booking_add_ons
+        if (addOnItems.length > 0) {
+          await tx.insert(bookingAddOns).values(
+            addOnItems.map((item) => ({
+              id: randomUUID(),
+              bookingId: booking.id,
+              addOnId: item.id,
+              quantity: item.quantity,
+            })),
+          );
+        }
+
         // Kalau Midtrans menolak, exception di bawah membatalkan
         // seluruh transaksi: tidak ada pesanan tanpa jalur bayar.
         const snap = await createSnapTransaction({
           orderId: booking.bookingCode,
-          grossAmount: totalIdr,
+          grossAmount: grandTotalIdr,
           customer: {
             name: input.contactName,
             email: ctx.user.email,
@@ -340,6 +416,12 @@ export const bookingRouter = router({
               quantity: input.paxCount,
               name: pkg.name,
             },
+            ...addOnItems.map((item) => ({
+              id: item.id,
+              price: item.price,
+              quantity: item.quantity,
+              name: item.name,
+            })),
           ],
           finishUrl: `${env.NEXT_PUBLIC_APP_URL}/ticket/${booking.bookingCode}`,
         });
@@ -350,7 +432,7 @@ export const bookingRouter = router({
         await tx.insert(payments).values({
           id: randomUUID(),
           bookingId: booking.id,
-          amountIdr: totalIdr,
+          amountIdr: grandTotalIdr,
           status: "pending",
           metadata: {
             snapToken: snap.token,
@@ -360,7 +442,7 @@ export const bookingRouter = router({
 
         return {
           bookingCode: booking.bookingCode,
-          totalIdr,
+          totalIdr: grandTotalIdr,
           snapToken: snap.token,
           snapRedirectUrl: snap.redirectUrl,
         };

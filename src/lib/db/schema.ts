@@ -269,6 +269,47 @@ export const bookings = mysqlTable(
   ],
 );
 
+/* ======================= add_on_services ====================== */
+
+export const addOnServices = mysqlTable(
+  "add_on_services",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    name: varchar("name", { length: 255 }).notNull(),
+    description: text("description"),
+    priceIdr: int("price_idr").notNull(),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    deletedAt: timestamp("deleted_at"),
+  },
+);
+
+/* ====================== booking_add_ons ====================== */
+
+export const bookingAddOns = mysqlTable(
+  "booking_add_ons",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    bookingId: varchar("booking_id", { length: 36 })
+      .notNull()
+      .references(() => bookings.id, { onDelete: "cascade" }),
+    addOnId: varchar("add_on_id", { length: 36 })
+      .notNull()
+      .references(() => addOnServices.id, { onDelete: "restrict" }),
+    quantity: int("quantity").notNull().default(1),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("idx_booking_add_ons_booking_id").on(table.bookingId),
+    index("idx_booking_add_ons_add_on_id").on(table.addOnId),
+    uniqueIndex("idx_booking_add_ons_unique").on(
+      table.bookingId,
+      table.addOnId,
+    ),
+  ],
+);
+
 /* =================== booking_allocations ================= */
 
 export const bookingAllocations = mysqlTable(
