@@ -387,6 +387,60 @@ export const auditLogs = mysqlTable(
   },
 );
 
+/* ========================= albums ========================= */
+
+export const albums = mysqlTable(
+  "albums",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    title: varchar("title", { length: 255 }).notNull(),
+    slug: varchar("slug", { length: 255 }).notNull().unique(),
+    description: text("description"),
+    coverImageUrl: varchar("cover_image_url", { length: 1024 }),
+    visibility: mysqlEnum("visibility", ["public", "private"])
+      .notNull()
+      .default("public"),
+    /** Link Google Drive opsional untuk download seluruh isi album (mis. file zip/foto HD). */
+    gdriveUrl: varchar("gdrive_url", { length: 1024 }),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => [
+    index("idx_albums_slug").on(table.slug),
+    index("idx_albums_visibility").on(table.visibility),
+  ],
+);
+
+/* ======================= album_items ====================== */
+
+export const albumItems = mysqlTable(
+  "album_items",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    albumId: varchar("album_id", { length: 36 })
+      .notNull()
+      .references(() => albums.id, { onDelete: "cascade" }),
+    itemType: mysqlEnum("item_type", ["image", "youtube", "pdf", "gdrive_link"])
+      .notNull()
+      .default("image"),
+    title: varchar("title", { length: 255 }),
+    description: text("description"),
+    /** URL file lokal (/uploads/...), ID/URL embed YouTube, atau URL Google Drive. */
+    mediaUrl: varchar("media_url", { length: 1024 }).notNull(),
+    /** URL thumbnail opsional bila mediaUrl berupa video/pdf/drive. */
+    thumbnailUrl: varchar("thumbnail_url", { length: 1024 }),
+    sortOrder: int("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+    deletedAt: timestamp("deleted_at"),
+  },
+  (table) => [
+    index("idx_album_items_album_id").on(table.albumId),
+    index("idx_album_items_sort_order").on(table.sortOrder),
+  ],
+);
+
 /* ========================= types ========================= */
 
 /** Latitude/longitude di-parse dari decimal string keluaran mysql2. */
@@ -414,6 +468,8 @@ export type MeetingPoint = typeof meetingPoints.$inferSelect;
 export type Jeep = typeof jeeps.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type Album = typeof albums.$inferSelect;
+export type AlbumItem = typeof albumItems.$inferSelect;
 
 export type UserRole = "customer" | "admin" | "owner";
 export type BookingStatus =

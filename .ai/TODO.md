@@ -11,6 +11,11 @@ pemilik project.
 
 ## Prioritas tinggi
 
+- [x] 2026-08-15 **Fitur Galeri & Album (Patreon-Style Secret Album Pages)**
+      Menambahkan manajemen galeri/album untuk admin di `/gallery` dan halaman album publik/privat di `/album/[slug]`.
+      Mendukung foto (auto WebP compress via `sharp`), video YouTube, PDF, dan link Google Drive.
+      Disimpan di filesystem `public/uploads/`. Landing page bento grid terhubung ke item galeri publik dari DB.
+
 - [x] 2026-08-13 **Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`).**
       Mengganti pembacaan mentah di seluruh modul aplikasi dengan `import { env } from "@/env"`,
       menghapus fallback berbahaya `?? ""`, dan menambahkan variabel `SEED_*` ke skema `env.ts`.

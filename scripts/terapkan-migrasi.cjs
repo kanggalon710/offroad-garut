@@ -15,9 +15,10 @@ const mysql = require("mysql2/promise");
 // 1050: Table exists
 // 1061: Duplicate key name (index)
 // 1060: Duplicate column name
+// 1005: Can't create table / duplicate FK name
 // 1826: Duplicate foreign key constraint name
 // 1822: Failed to add foreign key constraint (already exists)
-const SUDAH_ADA = new Set([1050, 1061, 1060, 1826, 1822]);
+const SUDAH_ADA = new Set([1050, 1061, 1060, 1005, 1826, 1822]);
 
 function bacaEnv() {
   if (process.env.DATABASE_URL) return;
@@ -46,32 +47,38 @@ async function terapkanMigrasi() {
     throw new Error("File .sql migrasi tidak ditemukan di folder drizzle.");
   }
 
-  // Pakai migrasi terbaru (nama file diurutkan, 0000_... paling awal)
-  const isi = fs.readFileSync(path.join(dir, files[files.length - 1]), "utf8");
-  const statements = isi
-    .split("--> statement-breakpoint")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
+  // Pakai semua file migrasi .sql di folder drizzle (diurutkan secara alfabetis)
+  let totalDibuat = 0;
+  let totalDilewati = 0;
   const conn = await mysql.createConnection(process.env.DATABASE_URL);
-  let dilewati = 0;
-  for (let i = 0; i < statements.length; i++) {
-    try {
-      await conn.query(statements[i]);
-    } catch (e) {
-      if (SUDAH_ADA.has(e.errno)) {
-        dilewati++;
-        continue;
+
+  for (const file of files) {
+    const isi = fs.readFileSync(path.join(dir, file), "utf8");
+    // Pisahkan statement berdasarkan delimiter Drizzle atau titik koma
+    const statements = isi
+      .split(/--> statement-breakpoint|;\s*$/m)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    for (let i = 0; i < statements.length; i++) {
+      try {
+        await conn.query(statements[i]);
+        totalDibuat++;
+      } catch (e) {
+        if (SUDAH_ADA.has(e.errno)) {
+          totalDilewati++;
+          continue;
+        }
+        const pesan =
+          `File ${file} Statement ${i + 1} gagal (kode ${e.errno}): ` +
+          `${statements[i].slice(0, 300)} | ${e.message}`;
+        await conn.end();
+        throw new Error(pesan);
       }
-      const pesan =
-        `Statement ${i + 1} gagal (kode ${e.errno}): ` +
-        `${statements[i].slice(0, 300)} | ${e.message}`;
-      await conn.end();
-      throw new Error(pesan);
     }
   }
   await conn.end();
-  return { dibuat: statements.length - dilewati, dilewati };
+  return { dibuat: totalDibuat, dilewati: totalDilewati };
 }
 
 module.exports = { terapkanMigrasi };

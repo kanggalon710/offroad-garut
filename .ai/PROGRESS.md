@@ -1,3 +1,19 @@
+## 2026-08-15 - Fitur Galeri & Album (Patreon-Style Secret Album Pages)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pemilik butuh galeri dokumentasi (foto, video YouTube, PDF, tautan Google Drive) yang bisa dikelola sendiri lewat web. Album publik tampil di landing page, sedangkan album privat untuk pelanggan/keluarga diakses via link rahasia seperti halaman Patreon.
+**Perubahan:**
+- `src/lib/db/schema.ts`: Tabel `albums` (slug rahasia, visibilitas publik/privat, cover, gdriveUrl) dan `albumItems` (image/youtube/pdf/gdrive_link, judul, deskripsi, urutan).
+- `drizzle/0003_add_albums_and_items.sql`: DDL migrasi MySQL untuk kedua tabel + FK ke `users`.
+- `src/lib/upload.ts`: `processAndSaveUpload` menyimpan ke `public/uploads/{subfolder}/`, gambar dikompresi otomatis oleh `sharp` ke WebP (maks 1920px, kualitas 80). `@types/sharp` ditambahkan sebagai devDependency.
+- `src/app/api/upload/route.ts`: Route handler upload `multipart/form-data` (maks 10 MB) yang hanya boleh diakses admin/owner via sesi Better-auth.
+- `src/server/routers/gallery.ts`: Sub-router tRPC: prosedur publik `getPublicAlbums`, `getPublicGalleryItems`, `getAlbumBySlug`; prosedur admin CRUD album & item dengan audit log. Terdaftar di `_app.ts`.
+- `src/components/admin/gallery-manager-client.tsx` & `src/app/(admin)/gallery/page.tsx`: Dashboard admin untuk buat album, unggah media, atur visibilitas, salin tautan rahasia, hapus album/item. Tab `/gallery` ditambahkan di `admin-header.tsx`.
+- `src/components/gallery/album-view-client.tsx` & `src/app/(public)/album/[slug]/page.tsx`: Halaman album bergaya Patreon: hero cover, badge publik/privat, tombol Download Full Album (Google Drive), grid media dengan lightbox foto, embed YouTube, unduh PDF, dan tombol bagikan tautan. Halaman privat diberi `robots: noindex`.
+- `src/components/landing/gallery.tsx`: Bento grid landing kini memuat item galeri publik dari DB via `getServerApi()` saat SSR, dengan fallback foto statis bila DB tidak tersedia.
+- `scripts/terapkan-migrasi.cjs`: Kode error MySQL 1005 ditambahkan ke himpunan yang dianggap "sudah ada" agar re-run migrasi di cPanel aman.
+**File:** src/lib/db/schema.ts, drizzle/0003_add_albums_and_items.sql, src/lib/upload.ts, src/app/api/upload/route.ts, src/server/routers/gallery.ts, src/server/routers/_app.ts, src/components/admin/gallery-manager-client.tsx, src/app/(admin)/gallery/page.tsx, src/components/admin/admin-header.tsx, src/components/gallery/album-view-client.tsx, src/app/(public)/album/[slug]/page.tsx, src/components/landing/gallery.tsx, scripts/terapkan-migrasi.cjs, package.json
+**Catatan:** Verifikasi `npm run typecheck` dan `npm run lint` bersih (0 error). Migrasi belum diterapkan ke database; jalankan `npm run db:push` atau migrasi 0003 sebelum fitur dipakai.
+
 ## 2026-08-15 - Perbaikan SWC Wasm OOM di cPanel Shared Hosting (SWC Minify & CPU Limit)
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** cPanel Shared Hosting membatasi memori virtual (`RLIMIT_AS` ~1.5GB). `NODE_OPTIONS=1024` terlalu tinggi sehingga SWC (Rust compiler Next.js) gagal mengalokasikan Wasm memory (`Out of memory`).

@@ -12,7 +12,12 @@
       "Bash(done)",
       "Skill(brainstorming)",
       "WebFetch(duckduckgo.com)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "WebFetch(www.jeepadventure.com)",
+      "WebFetch(www.pakisutiket.com)",
+      "WebFetch(sfindo.com)",
+      "WebFetch(www.google.com)",
+      "Skill(writing-plans)"
     ]
   },
   "$version": 4
