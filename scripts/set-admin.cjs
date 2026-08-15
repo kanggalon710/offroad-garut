@@ -32,7 +32,7 @@ async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? "jabnetid@gmail.com";
   const conn = await mysql.createConnection(process.env.DATABASE_URL);
   const [hasil] = await conn.execute(
-    "UPDATE users SET role = 'owner', emailVerified = 1 WHERE email = ?",
+    "UPDATE users SET role = 'owner', email_verified = 1 WHERE email = ?",
     [email],
   );
   await conn.end();
