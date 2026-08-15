@@ -16,6 +16,10 @@ REMOTE_HASH=$(git rev-parse origin/main-sql)
 
 if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
     echo "[$(date)] Perubahan baru terdeteksi. Memulai auto-deploy..."
+
+    # Activate cPanel Node.js virtual environment
+    source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
+
     git pull origin main-sql --quiet
     npm ci --omit=dev
     npm run build

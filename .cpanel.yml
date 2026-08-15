@@ -1,6 +1,7 @@
 ---
 deployment:
   tasks:
+    - source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
     - npm ci --omit=dev
     - npm run build
     - mkdir -p tmp
