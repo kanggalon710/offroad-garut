@@ -1,3 +1,11 @@
+## 2026-08-15 - Skrip Otomatisasi Deployment cPanel (.cpanel/deploy.sh)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pengelola ingin perubahan di Git otomatis ter-build dan di-restart saat `git pull` di cPanel Git Version Control tanpa harus mengklik tombol restart aplikasi secara manual.
+**Perubahan:**
+- Menambahkan skrip `.cpanel/deploy.sh` yang menjalankan `npm ci --omit=dev`, `npm run build`, dan menyentuh file `~/nodejs/offroad-garut/restart.txt` untuk memicu auto-restart di Phusion Passenger/cPanel.
+- Menjadikan `.cpanel/deploy.sh` executable (`chmod +x`).
+**File:** .cpanel/deploy.sh, .ai/PROGRESS.md
+
 ## 2026-08-15 - Video YouTube dan gambar baru di hero landing
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pemilik minta bukti visual gerak di halaman utama tanpa menyimpan file video ke repo GitHub. Video disematkan dari YouTube (hosting eksternal), sehingga tidak ada artefak biner di git.
