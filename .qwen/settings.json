@@ -24,7 +24,9 @@
       "Bash(eof)",
       "Bash(chmod *)",
       "Bash(ssh-add *)",
-      "Bash(rm *)"
+      "Bash(rm *)",
+      "Skill(ui-ux-pro-max)",
+      "Skill(design-taste-frontend)"
     ]
   },
   "$version": 4
