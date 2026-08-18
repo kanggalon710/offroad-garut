@@ -1,13 +1,17 @@
+import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, desc, eq, exists, inArray, ne, sql, sum } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, inArray, isNull, ne, sql, sum } from "drizzle-orm";
 import { z } from "zod";
 
+import { env } from "@/env";
 import { TIME_SLOT_VALUES } from "@/lib/constants";
 import { catatAudit } from "@/lib/db/audit";
 import {
+  addOnServices,
   bookingAllocations,
   bookings,
   jeeps,
+  meetingPoints,
   packages,
 } from "@/lib/db/schema";
 import { adminProcedure, router } from "../trpc";
@@ -151,6 +155,7 @@ export const adminRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
+      const dateStr = typeof input.date === "string" ? input.date : new Date(input.date).toISOString().slice(0, 10);
       const clash = ctx.db
         .select({ one: sql`1` })
         .from(bookingAllocations)
@@ -158,7 +163,7 @@ export const adminRouter = router({
         .where(
           and(
             eq(bookingAllocations.jeepId, jeeps.id),
-            eq(bookings.bookingDate, input.date),
+            eq(bookings.bookingDate, dateStr),
             eq(bookings.timeSlot, input.timeSlot),
             inArray(bookings.status, [...ACTIVE_BOOKING_STATUSES]),
           ),
@@ -254,10 +259,10 @@ export const adminRouter = router({
           });
         }
 
-        const [allocation] = await tx
+        const allocationId = randomUUID();
+        await tx
           .insert(bookingAllocations)
-          .values({ bookingId: booking.id, jeepId: input.jeepId })
-          .returning();
+          .values({ id: allocationId, bookingId: booking.id, jeepId: input.jeepId });
 
         await tx
           .update(bookings)
@@ -281,7 +286,7 @@ export const adminRouter = router({
 
         return {
           success: true as const,
-          allocationId: allocation?.id ?? null,
+          allocationId,
           jeepPlate: jeep.plateNumber,
         };
       });
@@ -293,9 +298,13 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       return ctx.db.transaction(async (tx) => {
         const dilepas = await tx
+          .select({ jeepId: bookingAllocations.jeepId })
+          .from(bookingAllocations)
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
+
+        await tx
           .delete(bookingAllocations)
-          .where(eq(bookingAllocations.bookingId, input.bookingId))
-          .returning({ jeepId: bookingAllocations.jeepId });
+          .where(eq(bookingAllocations.bookingId, input.bookingId));
 
         await tx
           .update(bookings)
@@ -317,4 +326,428 @@ export const adminRouter = router({
   getJeeps: adminProcedure.query(async ({ ctx }) => {
     return ctx.db.select().from(jeeps).orderBy(asc(jeeps.plateNumber));
   }),
+
+  /** Cek apakah fitur sync DB tersedia (hanya dev yang punya MAIN_DATABASE_URL). */
+  getSyncAvailability: adminProcedure.query(async () => {
+    return { available: Boolean(env.MAIN_DATABASE_URL) };
+  }),
+
+  /**
+   * Menarik data master (titik kumpul, paket, galeri, armada) dari
+   * database produksi ke database dev. Hanya dipakai di lingkungan dev,
+   * jadi dijaga lewat variabel MAIN_DATABASE_URL yang hanya diisi
+   * di server dev.
+   */
+  syncFromMainDb: adminProcedure.mutation(async ({ ctx }) => {
+    const { syncFromMainDb } = await import("@/lib/db/sync");
+
+    if (!env.MAIN_DATABASE_URL) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message:
+          "Sinkronisasi tidak tersedia di lingkungan ini (MAIN_DATABASE_URL belum diset).",
+      });
+    }
+
+    const ringkasan = await syncFromMainDb();
+    await ctx.db.transaction(async (tx) => {
+      await catatAudit(tx, {
+        tableName: "audit_logs",
+        recordId: ctx.user.id,
+        action: "UPDATE",
+        newData: { ringkasan },
+        changedBy: ctx.user.id,
+      });
+    });
+
+    return ringkasan;
+  }),
+
+  /* =========== Master Data CRUD: Add-on Services =========== */
+
+  getAddOns: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(addOnServices)
+      .where(isNull(addOnServices.deletedAt))
+      .orderBy(asc(addOnServices.name));
+  }),
+
+  createAddOn: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(2, "Nama layanan minimal 2 huruf").max(255),
+        description: z.string().max(500).optional(),
+        priceIdr: z.number().int().min(0, "Harga tidak boleh negatif"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(addOnServices).values({
+          id,
+          name: input.name,
+          description: input.description ?? null,
+          priceIdr: input.priceIdr,
+          isActive: true,
+        });
+        await catatAudit(tx, {
+          tableName: "add_on_services",
+          recordId: id,
+          action: "INSERT",
+          newData: { name: input.name, priceIdr: input.priceIdr },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { id, success: true as const };
+    }),
+
+  updateAddOn: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(2).max(255),
+        description: z.string().max(500).optional(),
+        priceIdr: z.number().int().min(0),
+        isActive: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(addOnServices)
+          .set({
+            name: input.name,
+            description: input.description ?? null,
+            priceIdr: input.priceIdr,
+            isActive: input.isActive,
+            updatedAt: new Date(),
+          })
+          .where(eq(addOnServices.id, input.id));
+        await catatAudit(tx, {
+          tableName: "add_on_services",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: {
+            name: input.name,
+            priceIdr: input.priceIdr,
+            isActive: input.isActive,
+          },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  deleteAddOn: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(addOnServices)
+          .set({ deletedAt: new Date(), isActive: false, updatedAt: new Date() })
+          .where(eq(addOnServices.id, input.id));
+        await catatAudit(tx, {
+          tableName: "add_on_services",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  /* =========== Master Data CRUD: Packages =========== */
+
+  getPackages: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(packages)
+      .where(isNull(packages.deletedAt))
+      .orderBy(asc(packages.pricePerPaxIdr));
+  }),
+
+  createPackage: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(2).max(255),
+        slug: z
+          .string()
+          .min(2)
+          .max(255)
+          .regex(/^[a-z0-9-]+$/, "Slug hanya huruf kecil, angka, dan strip"),
+        description: z.string().max(1000).optional(),
+        durationHours: z.number().int().min(1).max(48),
+        pricePerPaxIdr: z.number().int().min(0),
+        minPax: z.number().int().min(1).default(3),
+        maxPax: z.number().int().min(1).max(500).default(100),
+        isActive: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(packages).values({
+          id,
+          name: input.name,
+          slug: input.slug,
+          description: input.description ?? null,
+          durationHours: input.durationHours,
+          pricePerPaxIdr: input.pricePerPaxIdr,
+          minPax: input.minPax,
+          maxPax: input.maxPax,
+          isActive: input.isActive,
+        });
+        await catatAudit(tx, {
+          tableName: "packages",
+          recordId: id,
+          action: "INSERT",
+          newData: { name: input.name, slug: input.slug },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { id, success: true as const };
+    }),
+
+  updatePackage: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(2).max(255),
+        slug: z.string().min(2).max(255),
+        description: z.string().max(1000).optional(),
+        durationHours: z.number().int().min(1).max(48),
+        pricePerPaxIdr: z.number().int().min(0),
+        minPax: z.number().int().min(1),
+        maxPax: z.number().int().min(1).max(500),
+        isActive: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(packages)
+          .set({
+            name: input.name,
+            slug: input.slug,
+            description: input.description ?? null,
+            durationHours: input.durationHours,
+            pricePerPaxIdr: input.pricePerPaxIdr,
+            minPax: input.minPax,
+            maxPax: input.maxPax,
+            isActive: input.isActive,
+            updatedAt: new Date(),
+          })
+          .where(eq(packages.id, input.id));
+        await catatAudit(tx, {
+          tableName: "packages",
+          recordId: input.id,
+          action: "UPDATE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  deletePackage: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(packages)
+          .set({ deletedAt: new Date(), isActive: false, updatedAt: new Date() })
+          .where(eq(packages.id, input.id));
+        await catatAudit(tx, {
+          tableName: "packages",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  /* =========== Master Data CRUD: Jeeps =========== */
+
+  getJeepsAdmin: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(jeeps)
+      .where(isNull(jeeps.deletedAt))
+      .orderBy(asc(jeeps.plateNumber));
+  }),
+
+  createJeep: adminProcedure
+    .input(
+      z.object({
+        plateNumber: z.string().min(2).max(20),
+        name: z.string().min(2).max(100),
+        capacity: z.number().int().min(1).max(20).default(4),
+        status: z.enum(["active", "maintenance", "retired"]).default("active"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(jeeps).values({
+          id,
+          plateNumber: input.plateNumber,
+          name: input.name,
+          capacity: input.capacity,
+          status: input.status,
+        });
+        await catatAudit(tx, {
+          tableName: "jeeps",
+          recordId: id,
+          action: "INSERT",
+          newData: { plateNumber: input.plateNumber, name: input.name },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { id, success: true as const };
+    }),
+
+  updateJeep: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        plateNumber: z.string().min(2).max(20),
+        name: z.string().min(2).max(100),
+        capacity: z.number().int().min(1).max(20),
+        status: z.enum(["active", "maintenance", "retired"]),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(jeeps)
+          .set({
+            plateNumber: input.plateNumber,
+            name: input.name,
+            capacity: input.capacity,
+            status: input.status,
+            updatedAt: new Date(),
+          })
+          .where(eq(jeeps.id, input.id));
+        await catatAudit(tx, {
+          tableName: "jeeps",
+          recordId: input.id,
+          action: "UPDATE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  deleteJeep: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(jeeps)
+          .set({ deletedAt: new Date(), updatedAt: new Date() })
+          .where(eq(jeeps.id, input.id));
+        await catatAudit(tx, {
+          tableName: "jeeps",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  /* =========== Master Data CRUD: Meeting Points =========== */
+
+  getMeetingPointsAdmin: adminProcedure.query(async ({ ctx }) => {
+    return ctx.db
+      .select()
+      .from(meetingPoints)
+      .where(isNull(meetingPoints.deletedAt))
+      .orderBy(asc(meetingPoints.name));
+  }),
+
+  createMeetingPoint: adminProcedure
+    .input(
+      z.object({
+        name: z.string().min(2).max(255),
+        address: z.string().max(500).optional(),
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        isActive: z.boolean().default(true),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(meetingPoints).values({
+          id,
+          name: input.name,
+          address: input.address ?? null,
+          latitude: input.latitude.toFixed(6),
+          longitude: input.longitude.toFixed(6),
+          isActive: input.isActive,
+        });
+        await catatAudit(tx, {
+          tableName: "meeting_points",
+          recordId: id,
+          action: "INSERT",
+          newData: { name: input.name },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { id, success: true as const };
+    }),
+
+  updateMeetingPoint: adminProcedure
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        name: z.string().min(2).max(255),
+        address: z.string().max(500).optional(),
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+        isActive: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(meetingPoints)
+          .set({
+            name: input.name,
+            address: input.address ?? null,
+            latitude: input.latitude.toFixed(6),
+            longitude: input.longitude.toFixed(6),
+            isActive: input.isActive,
+            updatedAt: new Date(),
+          })
+          .where(eq(meetingPoints.id, input.id));
+        await catatAudit(tx, {
+          tableName: "meeting_points",
+          recordId: input.id,
+          action: "UPDATE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  deleteMeetingPoint: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(meetingPoints)
+          .set({ deletedAt: new Date(), isActive: false, updatedAt: new Date() })
+          .where(eq(meetingPoints.id, input.id));
+        await catatAudit(tx, {
+          tableName: "meeting_points",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
 });

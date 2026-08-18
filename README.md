@@ -14,7 +14,7 @@ disengaja terhadap PRD dicatat di [DEVIASI-PRD.md](DEVIASI-PRD.md).
 | Framework | Next.js 15 (App Router, React 19) |
 | Styling | Tailwind CSS v4, komponen bergaya shadcn/ui |
 | API | tRPC v11 |
-| Database | PostgreSQL + PostGIS, Drizzle ORM |
+| Database | MariaDB/MySQL, Drizzle ORM |
 | Auth | Better-auth (Google OAuth untuk turis, email + password untuk pengelola) |
 | Pembayaran | Midtrans Snap v3 |
 | Notifikasi | Fonnte (WhatsApp) |
@@ -24,40 +24,37 @@ disengaja terhadap PRD dicatat di [DEVIASI-PRD.md](DEVIASI-PRD.md).
 ## Quickstart
 
 ```bash
-pnpm install
+npm install
 ```
 
 ```bash
 cp .env.example .env.local
 ```
 
-Isi minimal `DATABASE_URL`. Database harus punya ekstensi PostGIS:
+Isi minimal `DATABASE_URL`. Database menggunakan MariaDB atau MySQL.
+
+Terapkan skema. `drizzle-kit push` meminta konfirmasi interaktif, tetapi untuk lingkungan baru disarankan:
 
 ```bash
-psql -d nama_database -c "CREATE EXTENSION IF NOT EXISTS postgis;"
-```
-
-Terapkan skema. `drizzle-kit push` meminta konfirmasi interaktif kalau database
-sudah berisi tabel PostGIS, jadi jalur migrasi lebih dapat diandalkan:
-
-```bash
-pnpm db:generate
+npm run db:generate
 ```
 
 ```bash
-psql -d nama_database -f drizzle/0000_init.sql
+npm run db:push
 ```
+
+Atau terapkan SQL di `drizzle/0000_...sql` langsung ke database.
 
 Isi data awal (3 paket, 1 titik kumpul, 5 unit Jeep, satu akun pengelola):
 
 ```bash
-pnpm db:seed
+npm run db:seed
 ```
 
 Jalankan:
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 Buka http://localhost:3000. Akun pengelola bawaan seed:
@@ -67,19 +64,19 @@ sebelum dipakai di produksi.**
 ## Perintah
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 ```bash
-pnpm typecheck
+npm run typecheck
 ```
 
 ```bash
-pnpm test
+npm run test
 ```
 
 ```bash
-pnpm build
+npm run build
 ```
 
 ## Struktur
@@ -148,20 +145,102 @@ git checkout deploy && git merge --no-ff dev && git push
 git checkout main && git merge --no-ff deploy && git push
 ```
 
-CI di `.github/workflows/ci.yml` menjalankan lint, typecheck, test, dan build
-pada setiap push dan pull request ke ketiga branch. Test memerlukan database,
-jadi workflow menyalakan service container PostGIS lalu menerapkan migrasi dan
-seed sebelum menjalankannya.
+**Cabang `main-sql`:** versi MariaDB/MySQL dari aplikasi untuk cPanel.
+Semua perintah di bawah berlaku untuk cabang ini. Alurnya sama dengan
+`dev -> deploy -> main`, yaitu `dev-sql -> deploy-sql -> main-sql` bila
+membutuhkan lingkungan preview.
+
+## Pengujian lokal
+
+Butuh MariaDB/MySQL lokal. Setup sekali (Fedora):
+
+```bash
+sudo dnf install -y mariadb mariadb-server
+sudo systemctl enable --now mariadb
+```
+
+Buat pengguna dan database:
+
+```bash
+sudo mariadb -e "CREATE USER IF NOT EXISTS 'yoga'@'localhost' IDENTIFIED BY 'ganti-password'; GRANT ALL PRIVILEGES ON *.* TO 'yoga'@'localhost' WITH GRANT OPTION; FLUSH PRIVILEGES;"
+mariadb -u yoga -p -e "CREATE DATABASE IF NOT EXISTS offroad_garut CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+```
+
+Setel `.env.local` (format `DATABASE_URL`):
+
+```bash
+DATABASE_URL="mysql://yoga:ganti-password@localhost:3306/offroad_garut"
+```
+
+Terapkan skema dan seed:
+
+```bash
+mariadb -u yoga -p offroad_garut < drizzle/0000_material_dormammu.sql
+npm run db:seed
+```
+
+Jalankan verifikasi:
+
+```bash
+npm run typecheck && npm run lint && npm run test && npm run build
+```
+
+`db:push` bersifat interaktif (minta TTY), jadi jalur migrasi SQL di atas
+lebih andal untuk skrip dan CI.
 
 ## Deployment
 
-1. Push ke GitHub atau GitLab, sambungkan ke project Vercel.
-2. Isi seluruh variabel dari `.env.example` di tab Environment Variables Vercel,
-   untuk Production maupun Preview. **Variabel berawalan `NEXT_PUBLIC_` harus
-   sudah terisi sebelum build dijalankan**, karena nilainya ditanam ke dalam
-   bundel saat kompilasi. Kalau `NEXT_PUBLIC_APP_URL` kosong saat build,
-   `metadataBase` dan tautan Open Graph akan menunjuk ke `localhost`.
-3. Pastikan database produksi sudah mengaktifkan ekstensi `postgis`.
-4. Setel URL webhook Midtrans ke `https://domain-anda/api/webhooks/midtrans`.
-5. Daftarkan `https://domain-anda/api/auth/callback/google` sebagai redirect URI
-   di Google Cloud Console.
+### cPanel (Node.js Selector & 2-Domain Setup)
+
+Setup untuk 2 domain di cPanel yang sama (`garutoffroad.com` dari `main-sql` dan `garutoffroad-dev.com` dari `dev-sql`):
+
+1. **Setup Node.js App di cPanel**
+   - Buat 2 Node.js App terpisah di cPanel (**Setup Node.js App**):
+     - Prod: Domain `garutoffroad.com`, App Root `offroad-garut-prod`, Startup file `server.js`.
+     - Dev: Domain `garutoffroad-dev.com`, App Root `offroad-garut-dev`, Startup file `server.js`.
+   - **Tidak perlu mengisi environment variables di cPanel UI**. `server.js` otomatis membaca `.env.production` lokal di masing-masing direktori proyek lewat `process.loadEnvFile()`.
+
+2. **Clone Repositori di Masing-masing Folder**
+   - **Produksi:**
+     ```bash
+     cd ~/offroad-garut-prod
+     git clone <repo-url> .
+     git checkout main-sql
+     cp .env.example .env.production
+     ```
+   - **Development:**
+     ```bash
+     cd ~/offroad-garut-dev
+     git clone <repo-url> .
+     git checkout dev-sql
+     cp .env.example .env.production
+     ```
+
+3. **Konfigurasi `.env.production` Masing-masing**
+   - **File `.env.production` Prod (`garutoffroad.com`):**
+     Isi `DATABASE_URL` dengan database produksi, `NEXT_PUBLIC_APP_URL="https://garutoffroad.com"`, dan key Midtrans produksi.
+   - **File `.env.production` Dev (`garutoffroad-dev.com`):**
+     Isi `DATABASE_URL` dengan database dev, `NEXT_PUBLIC_APP_URL="https://garutoffroad-dev.com"`, key Midtrans sandbox (`SB-...`), dan tambahkan:
+     ```env
+     MAIN_DATABASE_URL="mysql://user_prod:pass_prod@localhost:3306/db_offroad_prod"
+     ```
+     *(Password dengan karakter `@` di-encode menjadi `%40`).*
+
+4. **Install, Build, & Seed**
+   Di masing-masing folder:
+   ```bash
+   npm install && npm run build && npm run db:seed
+   ```
+
+5. **Fitur Sync Database Dev ke Prod Data**
+   Pada environment Dev (bila `MAIN_DATABASE_URL` diisi), tombol **"Sinkronkan Sekarang"** akan muncul di Dashboard Admin Dev (`/dashboard`). Menekan tombol ini akan menarik data master (paket, titik kumpul, armada) dari DB Produksi ke DB Dev tanpa menghapus paket dummy testing (Rp 1.000).
+
+6. **Restart Aplikasi**
+   Klik **Restart** pada cPanel Node.js App masing-masing.
+
+**Perhatian variabel build:** Variabel berawalan `NEXT_PUBLIC_` ditanam ke bundel JavaScript saat `npm run build`. Jika ada penambahan/perubahan variabel lingkungan baru di masa depan, cukup update file `.env.production` di server lalu jalankan `npm run build`.
+
+### VPS Ubuntu
+
+Lihat [DEPLOY-VPS.md](DEPLOY-VPS.md) untuk instruksi deploy ke VPS Ubuntu
+dengan nginx, systemd, dan PostgreSQL.

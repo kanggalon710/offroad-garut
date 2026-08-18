@@ -2,6 +2,8 @@ import "server-only";
 
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 
+import { env } from "@/env";
+
 /**
  * Cloudflare R2 lewat S3 API (PRD §10).
  * Dipakai untuk foto spot resolusi tinggi supaya tidak kena
@@ -13,7 +15,9 @@ let client: S3Client | null = null;
 function r2Client(): S3Client {
   if (client) return client;
 
-  const { R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY } = process.env;
+  const R2_ENDPOINT = env.R2_ENDPOINT;
+  const R2_ACCESS_KEY_ID = env.R2_ACCESS_KEY_ID;
+  const R2_SECRET_ACCESS_KEY = env.R2_SECRET_ACCESS_KEY;
   if (!R2_ENDPOINT || !R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY) {
     throw new Error("Kredensial R2 belum lengkap di environment");
   }
@@ -37,8 +41,8 @@ export type UploadInput = {
 
 /** Mengunggah objek dan mengembalikan URL publiknya. */
 export async function uploadToR2(input: UploadInput): Promise<string> {
-  const bucket = process.env.R2_BUCKET;
-  const publicUrl = process.env.NEXT_PUBLIC_R2_PUBLIC_URL;
+  const bucket = env.R2_BUCKET;
+  const publicUrl = env.NEXT_PUBLIC_R2_PUBLIC_URL;
   if (!bucket) throw new Error("R2_BUCKET belum diisi");
   if (!publicUrl) throw new Error("NEXT_PUBLIC_R2_PUBLIC_URL belum diisi");
 

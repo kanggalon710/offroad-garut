@@ -15,14 +15,33 @@
 import { createServer } from "node:http";
 import next from "next";
 
+// Muat .env.production atau .env.local secara otomatis saat startup Phusion Passenger/cPanel
+// agar tidak perlu mendaftarkan variabel lingkungan manual di cPanel UI.
+for (const envFile of [".env.production", ".env.local"]) {
+  try {
+    process.loadEnvFile(envFile);
+    break;
+  } catch {
+    // Lewati jika file tidak ada
+  }
+}
+
+import migrasi from "./scripts/terapkan-migrasi.cjs";
+
 const port = Number(process.env.PORT) || 3000;
 const hostname = process.env.HOSTNAME || "0.0.0.0";
 
 const app = next({ dev: false, hostname, port });
 const handle = app.getRequestHandler();
 
-app
-  .prepare()
+migrasi
+  .terapkanMigrasi()
+  .then((hasil) => {
+    console.log(
+      `Migrasi DB: ${hasil.dibuat} statement dijalankan, ${hasil.dilewati} dilewati.`,
+    );
+    return app.prepare();
+  })
   .then(() => {
     createServer((req, res) => {
       handle(req, res).catch((error) => {

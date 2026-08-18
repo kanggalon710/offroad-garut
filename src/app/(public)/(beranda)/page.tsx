@@ -1,3 +1,4 @@
+import { env } from "@/env";
 import { Faq } from "@/components/landing/faq";
 import { FinalCta } from "@/components/landing/final-cta";
 import { Gallery } from "@/components/landing/gallery";
@@ -50,7 +51,7 @@ async function loadPackages(): Promise<HasilPaket> {
       // Petunjuk teknis hanya ditampilkan saat pengembangan. Pengunjung
       // tidak perlu tahu isi DATABASE_URL.
       petunjukPengembang:
-        process.env.NODE_ENV === "development" ? diagnosis.message : null,
+        env.NODE_ENV === "development" ? diagnosis.message : null,
     };
   }
 }

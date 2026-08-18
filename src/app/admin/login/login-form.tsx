@@ -59,7 +59,6 @@ export function AdminLoginForm({ redirectTo }: { redirectTo: string }) {
           autoComplete="username"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          placeholder="admin@offroad.id"
           required
         />
       </Field>

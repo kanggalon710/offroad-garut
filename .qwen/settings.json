@@ -5,7 +5,19 @@
       "Bash(ssh *)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push)"
+      "Bash(git push)",
+      "WebFetch(api.sandbox.midtrans.com)",
+      "Bash(do *)",
+      "Bash(git *)",
+      "Bash(done)",
+      "Skill(brainstorming)",
+      "WebFetch(duckduckgo.com)",
+      "Bash(npm run *)",
+      "WebFetch(www.jeepadventure.com)",
+      "WebFetch(www.pakisutiket.com)",
+      "WebFetch(sfindo.com)",
+      "WebFetch(www.google.com)",
+      "Skill(writing-plans)"
     ]
   },
   "$version": 4

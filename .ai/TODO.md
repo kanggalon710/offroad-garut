@@ -11,24 +11,19 @@ pemilik project.
 
 ## Prioritas tinggi
 
-- [ ] **`src/env.ts` tidak pernah dipakai.** Skema `@t3-oss/env-nextjs` sudah lengkap dan
-      tervalidasi, tapi tidak ada satu file pun yang mengimpornya. Semua konsumen membaca
-      `process.env` mentah di 30-an tempat. Yang paling berbahaya: `src/lib/auth.ts`
-      memakai `?? ""` sehingga Google client id yang hilang jadi string kosong dan aplikasi
-      tetap boot dalam keadaan rusak, lalu `src/server/routers/booking.ts` dan
-      `src/app/api/webhooks/midtrans/route.ts` menginterpolasi `NEXT_PUBLIC_APP_URL` tanpa
-      penjagaan sehingga bisa menghasilkan URL `"undefined/ticket/..."` yang dikirim ke
-      pelanggan lewat WhatsApp.
-      **Rencana:** ganti semua pembacaan jadi `import { env } from "@/env"`, hapus semua
-      fallback `?? ""`, sisakan `process.env` hanya di `src/env.ts`, `drizzle.config.ts`,
-      `server.js`, `scripts/*.cjs`, dan `src/test/**`.
+- [x] 2026-08-15 **Fitur Galeri & Album (Patreon-Style Secret Album Pages)**
+      Menambahkan manajemen galeri/album untuk admin di `/gallery` dan halaman album publik/privat di `/album/[slug]`.
+      Mendukung foto (auto WebP compress via `sharp`), video YouTube, PDF, dan link Google Drive.
+      Disimpan di filesystem `public/uploads/`. Landing page bento grid terhubung ke item galeri publik dari DB.
 
-- [ ] **`getPackageById` tidak menyaring paket terhapus.** Di
-      `src/server/routers/booking.ts`, prosedur pengambilan paket berdasarkan id tidak
-      memeriksa `isActive` maupun `deletedAt`, padahal pengambilan berdasarkan slug
-      memeriksanya. Artinya paket yang sudah di-soft-delete masih bisa dipesan lewat id.
-      **Rencana:** buat satu helper predikat baris aktif dan pakai di semua pengambilan
-      paket dan titik kumpul.
+- [x] 2026-08-13 **Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`).**
+      Mengganti pembacaan mentah di seluruh modul aplikasi dengan `import { env } from "@/env"`,
+      menghapus fallback berbahaya `?? ""`, dan menambahkan variabel `SEED_*` ke skema `env.ts`.
+
+- [x] 2026-08-15 **`getPackageById` menyaring paket terhapus.** Di
+      `src/server/routers/booking.ts`, penyaringan `isRowActive(packages)` ditambahkan ke
+      `getPackageById` serta diseragamkan di seluruh 7 kueri paket, titik kumpul, dan add-on.
+      Paket non-aktif/soft-deleted tidak dapat lagi diambil via ID.
 
 ## Prioritas menengah
 
@@ -89,6 +84,9 @@ pemilik project.
 
 ## Selesai
 
+- [x] 2026-08-15 Pengaturan nomor WhatsApp utama & alternatif di `/pengaturan` + auto-fill di form booking. Lihat `.ai/PROGRESS.md`.
+- [x] 2026-08-15 Video YouTube (ID `XHc85Zws-S0`) dan gambar baru (`jeep_hero.jpg`) di hero landing page. Lihat `.ai/PROGRESS.md`.
+- [x] 2026-08-13 Migrasi pembacaan `process.env` mentah ke T3 Env (`@/env`). Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-12 Perbaikan bug status pembayaran Midtrans (expired URL & sinkronisasi UI)
 - [x] 2026-08-12 Kalender ketersediaan real-time di form booking (menampilkan tanggal penuh)
 - [x] 2026-08-11 Standar pengembangan lintas AI agent (global + project). Lihat

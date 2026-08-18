@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import Script from "next/script";
 
+import { env } from "@/env";
 import { BookingForm } from "@/components/domain/booking-form";
 import { Container } from "@/components/shared/container";
 import { Alert } from "@/components/ui/alert";
@@ -45,19 +46,26 @@ export default async function BookingPage({ searchParams }: PageProps) {
     const diagnosis = catatKegagalanDatabase("booking", error);
     loadFailed = true;
     petunjukPengembang =
-      process.env.NODE_ENV === "development" ? diagnosis.message : null;
+      env.NODE_ENV === "development" ? diagnosis.message : null;
   }
 
-  const userPhone =
-    typeof (session.user as { phone?: unknown }).phone === "string"
-      ? (session.user as { phone: string }).phone
-      : "";
+  let userPhone = "";
+  try {
+    const api = await getServerApi();
+    const profile = await api.user.getProfile();
+    if (profile.phone) userPhone = profile.phone;
+  } catch {
+    // Fallback bila profile gagal dimuat
+    if (typeof (session.user as { phone?: unknown }).phone === "string") {
+      userPhone = (session.user as unknown as { phone: string }).phone;
+    }
+  }
 
   return (
     <>
       <Script
-        src={process.env.NEXT_PUBLIC_MIDTRANS_URL}
-        data-client-key={process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
+        src={env.NEXT_PUBLIC_MIDTRANS_URL}
+        data-client-key={env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY}
         strategy="lazyOnload"
       />
 

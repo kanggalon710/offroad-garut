@@ -62,7 +62,16 @@ export function Faq() {
         </div>
 
         <p className="mt-8 text-meta text-muted-foreground">
-          Masih ragu? Chat {site.whatsappDisplay}, dijawab di jam operasional.
+          Masih ragu? Chat{" "}
+          <a
+            href={`https://wa.me/${site.whatsapp.replace("+", "")}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            {site.whatsappDisplay}
+          </a>
+          , dijawab di jam operasional.
         </p>
       </Container>
     </Section>

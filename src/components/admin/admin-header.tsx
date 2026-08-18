@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, ListChecks, LogOut } from "lucide-react";
+import { Database, Image as ImageIcon, LayoutDashboard, ListChecks, LogOut } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 const tabs = [
   { href: "/dashboard", label: "Hari ini", icon: LayoutDashboard },
   { href: "/orders", label: "Semua pesanan", icon: ListChecks },
+  { href: "/master", label: "Kelola Master Data", icon: Database },
+  { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon },
 ];
 
 export function AdminHeader({ name }: { name: string }) {

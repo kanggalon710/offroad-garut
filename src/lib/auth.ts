@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 
+import { env } from "@/env";
 import { db } from "@/lib/db";
 import {
   accounts,
@@ -11,8 +12,8 @@ import {
 } from "@/lib/db/schema";
 
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL,
-  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: env.BETTER_AUTH_URL,
+  secret: env.BETTER_AUTH_SECRET,
 
   /**
    * Di produksi hanya domain aplikasi yang dipercaya. Saat pengembangan
@@ -20,23 +21,14 @@ export const auth = betterAuth({
    * origin yang tidak cocok membuat setiap permintaan auth ditolak.
    */
   trustedOrigins:
-    process.env.NODE_ENV === "production"
-      ? [process.env.BETTER_AUTH_URL ?? ""]
+    env.NODE_ENV === "production"
+      ? [env.BETTER_AUTH_URL]
       : ["http://localhost:*", "http://127.0.0.1:*"],
 
   database: drizzleAdapter(db, {
-    provider: "pg",
+    provider: "mysql",
     schema: { users, sessions, accounts, verifications },
   }),
-
-  advanced: {
-    database: {
-      // Biarkan Postgres yang membuat id lewat gen_random_uuid().
-      // Generator id bawaan better-auth menghasilkan string non-uuid
-      // yang ditolak kolom bertipe uuid.
-      generateId: false,
-    },
-  },
 
   user: {
     modelName: "users",
@@ -53,6 +45,11 @@ export const auth = betterAuth({
         input: false,
       },
       phone: {
+        type: "string",
+        required: false,
+        input: false,
+      },
+      alternativePhone: {
         type: "string",
         required: false,
         input: false,
@@ -75,8 +72,8 @@ export const auth = betterAuth({
   /** Login turis: satu ketukan lewat Google (PRD §9). */
   socialProviders: {
     google: {
-      clientId: process.env.GOOGLE_CLIENT_ID ?? "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? "",
+      clientId: env.GOOGLE_CLIENT_ID,
+      clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
 

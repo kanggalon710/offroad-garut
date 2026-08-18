@@ -1,6 +1,14 @@
 "use client";
 
-import { Eye, EyeOff, KeyRound, Loader2, Mail, UserRound } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  KeyRound,
+  Loader2,
+  Mail,
+  Phone,
+  UserRound,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -10,10 +18,31 @@ import { Card } from "@/components/ui/card";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { api } from "@/trpc/client";
 
-type Props = { name: string; email: string };
+type Props = {
+  name: string;
+  email: string;
+  phone: string | null;
+  alternativePhone: string | null;
+};
 
-export function PengaturanClient({ name, email }: Props) {
+function displayPhone(value: string | null): string {
+  if (!value) return "";
+  // Simpan sebagai +62xxxxxxxxxx; tampilkan dengan prefix 0 agar
+  // user mudah mengeditnya.
+  if (value.startsWith("+62")) {
+    return "0" + value.slice(3);
+  }
+  return value;
+}
+
+export function PengaturanClient({
+  name,
+  email,
+  phone,
+  alternativePhone,
+}: Props) {
   const router = useRouter();
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,10 +51,18 @@ export function PengaturanClient({ name, email }: Props) {
   // --- name form ---
   const [displayName, setDisplayName] = useState(name);
 
+  // --- phone form ---
+  const [phoneInput, setPhoneInput] = useState(displayPhone(phone));
+  const [altPhoneInput, setAltPhoneInput] = useState(
+    displayPhone(alternativePhone),
+  );
+
   // --- password form ---
   const [showPassword, setShowPassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+
+  const updatePhonesMutation = api.user.updatePhones.useMutation();
 
   async function handleUpdateName(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,6 +82,27 @@ export function PengaturanClient({ name, email }: Props) {
     setSuccess("Nama berhasil diperbarui.");
     router.refresh();
     setBusy(false);
+  }
+
+  async function handleUpdatePhones(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setBusy(true);
+
+    try {
+      await updatePhonesMutation.mutateAsync({
+        phone: phoneInput,
+        alternativePhone: altPhoneInput,
+      });
+      setSuccess("Nomor WhatsApp berhasil diperbarui.");
+      router.refresh();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Gagal mengubah nomor WhatsApp.";
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleChangePassword(event: React.FormEvent<HTMLFormElement>) {
@@ -84,7 +142,8 @@ export function PengaturanClient({ name, email }: Props) {
         </p>
         <h1 className="text-title font-bold text-foreground">Pengaturan Akun</h1>
         <p className="text-meta text-muted-foreground">
-          Kelola nama tampilan dan kata sandi kamu.
+          Kelola nama tampilan, nomor WhatsApp, dan kata sandi kamu. Nomor yang
+          kamu simpan di sini akan otomatis dipakai saat memesan paket.
         </p>
       </header>
 
@@ -133,6 +192,72 @@ export function PengaturanClient({ name, email }: Props) {
                 </>
               ) : (
                 "Simpan Nama"
+              )}
+            </Button>
+          </form>
+        </Card>
+
+        {/* --- whatsapp numbers --- */}
+        <Card className="p-5 sm:p-6">
+          <div className="flex items-start gap-3">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Phone className="size-5" aria-hidden="true" />
+            </div>
+            <div className="min-w-0 flex-1 space-y-1">
+              <h2 className="text-base font-bold text-foreground">Nomor WhatsApp</h2>
+              <p className="text-small text-muted-foreground">
+                Nomor ini otomatis mengisi kolom Data Pemesan di halaman
+                booking. Nomor alternatif digunakan jika nomor utama tidak bisa
+                menerima pesan.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleUpdatePhones} className="mt-5 space-y-4">
+            <Field
+              id="phone"
+              label="Nomor utama"
+              hint="Contoh: 0812 3456 7890. Wajib diisi agar tiket QR dapat dikirim."
+            >
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value)}
+                className="w-full"
+                placeholder="0812 3456 7890"
+              />
+            </Field>
+
+            <Field
+              id="alternative-phone"
+              label="Nomor alternatif"
+              hint="Opsional. Misal nomor keluarga atau rekan yang bisa menerima pesan jika kamu tidak bisa."
+            >
+              <Input
+                id="alternative-phone"
+                name="alternative-phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                value={altPhoneInput}
+                onChange={(e) => setAltPhoneInput(e.target.value)}
+                className="w-full"
+                placeholder="0812 3456 7891"
+              />
+            </Field>
+
+            <Button type="submit" size="lg" className="w-full sm:w-auto" disabled={busy}>
+              {busy ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                  Menyimpan...
+                </>
+              ) : (
+                "Simpan Nomor"
               )}
             </Button>
           </form>

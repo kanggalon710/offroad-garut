@@ -6,13 +6,14 @@ import { httpBatchLink } from "@trpc/client";
 import { useState, type ReactNode } from "react";
 import superjson from "superjson";
 
+import { env } from "@/env";
 import type { AppRouter } from "@/server/routers/_app";
 
 export const api = createTRPCReact<AppRouter>();
 
 function baseUrl(): string {
   if (typeof window !== "undefined") return "";
-  return process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  return env.NEXT_PUBLIC_APP_URL;
 }
 
 export function TRPCProvider({ children }: { children: ReactNode }) {

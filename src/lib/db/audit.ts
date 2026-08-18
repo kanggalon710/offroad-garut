@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { db } from "./index";
 
 import { auditLogs } from "./schema";
@@ -31,6 +32,7 @@ export async function catatAudit(
   entry: AuditEntry,
 ): Promise<void> {
   await tx.insert(auditLogs).values({
+    id: randomUUID(),
     tableName: entry.tableName,
     recordId: entry.recordId,
     action: entry.action,

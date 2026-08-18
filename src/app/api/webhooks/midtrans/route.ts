@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
+import { env } from "@/env";
 import { db } from "@/lib/db";
 import { catatAudit } from "@/lib/db/audit";
 import {
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
         .innerJoin(packages, eq(packages.id, bookings.packageId))
         .leftJoin(meetingPoints, eq(meetingPoints.id, bookings.meetingPointId))
         .where(eq(bookings.bookingCode, payload.order_id))
-        .for("update", { of: bookings })
+        .for("update")
         .limit(1);
 
       if (!row) return { kind: "not-found" as const };
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
         .where(eq(payments.bookingId, row.booking.id));
 
       if (outcome === "paid" && !alreadySettled) {
-        const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL}/ticket/${row.booking.bookingCode}`;
+        const ticketUrl = `${env.NEXT_PUBLIC_APP_URL}/ticket/${row.booking.bookingCode}`;
         await tx
           .update(bookings)
           .set({
@@ -178,7 +179,7 @@ export async function POST(request: Request) {
           paxCount: row.booking.paxCount,
           contactName: row.booking.contactName,
           contactPhone: row.booking.contactPhone,
-          dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+          dashboardUrl: `${env.NEXT_PUBLIC_APP_URL}/dashboard`,
         }),
       ]);
 

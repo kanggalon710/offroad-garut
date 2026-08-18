@@ -50,6 +50,8 @@ function kodeDari(error: unknown): string | null {
 }
 
 export function diagnosaDatabase(error: unknown): DatabaseDiagnosis {
+  // Membaca process.env mentah secara sengaja agar fungsi ini tetap bisa
+  // mendiagnosa saat DATABASE_URL belum valid/kosong tanpa crash di validation layer.
   const url = process.env.DATABASE_URL ?? "";
 
   if (!url) {
@@ -84,7 +86,7 @@ export function diagnosaDatabase(error: unknown): DatabaseDiagnosis {
       return {
         issue: "koneksi-ditolak",
         message:
-          "Server database menolak koneksi. Pastikan Postgres berjalan dan portnya sesuai dengan DATABASE_URL.",
+          "Server database menolak koneksi. Pastikan MariaDB/MySQL berjalan dan portnya sesuai dengan DATABASE_URL.",
         konfigurasi: true,
       };
     case "ETIMEDOUT":
@@ -92,37 +94,37 @@ export function diagnosaDatabase(error: unknown): DatabaseDiagnosis {
       return {
         issue: "waktu-habis",
         message:
-          "Koneksi ke database kehabisan waktu. Kalau memakai Neon, instansnya mungkin sedang bangun dari auto-pause. Coba lagi sebentar.",
+          "Koneksi ke database kehabisan waktu. Periksa kembali alamat host di DATABASE_URL.",
         konfigurasi: false,
       };
-    case "28P01":
-    case "28000":
+    case "ER_ACCESS_DENIED_ERROR":
+    case "ER_DBACCESS_DENIED_ERROR":
       return {
         issue: "kredensial-salah",
         message:
           "Nama pengguna atau kata sandi di DATABASE_URL ditolak server database.",
         konfigurasi: true,
       };
-    case "3D000":
+    case "ER_BAD_DB_ERROR":
       return {
         issue: "database-tidak-ada",
         message:
-          "Database yang disebut di DATABASE_URL tidak ada. Buat dulu databasenya, lalu jalankan migrasi.",
+          "Database yang disebut di DATABASE_URL tidak ada. Buat dulu databasenya lewat cPanel (MySQL Databases), lalu jalankan migrasi.",
         konfigurasi: true,
       };
-    case "42P01":
+    case "ER_NO_SUCH_TABLE":
       return {
         issue: "skema-belum-dimigrasi",
         message:
-          "Tabelnya belum ada. Jalankan `pnpm db:generate` lalu terapkan drizzle/0000_init.sql ke database.",
+          "Tabelnya belum ada. Terapkan migrasi drizzle/*.sql ke database (server menjalankannya otomatis saat start).",
         konfigurasi: true,
       };
-    case "42883":
+    case "ER_CON_COUNT_ERROR":
       return {
-        issue: "skema-belum-dimigrasi",
+        issue: "koneksi-ditolak",
         message:
-          "Fungsi PostGIS tidak ditemukan. Aktifkan ekstensinya dengan `CREATE EXTENSION postgis;`.",
-        konfigurasi: true,
+          "Terlalu banyak koneksi ke database. cPanel membatasi koneksi simultan; tunggu sebentar lalu coba lagi.",
+        konfigurasi: false,
       };
     default:
       return {
