@@ -36,10 +36,10 @@ export function MasterDataClient() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-title font-bold text-foreground sm:text-2xl">
+        <h1 className="text-section font-bold text-foreground">
           Kelola Master Data
         </h1>
-        <p className="text-meta text-muted-foreground">
+        <p className="mt-1 text-meta text-muted-foreground">
           Kelola data layanan tambahan, paket tour, armada jeep, dan titik kumpul.
         </p>
       </div>
@@ -230,7 +230,7 @@ function AddOnsManager() {
               <Input id="addon-price" type="number" value={priceIdr} onChange={(e) => setPriceIdr(Number(e.target.value))} min={0} required />
             </Field>
             {editingId ? (
-              <label className="flex items-center gap-2 text-meta cursor-pointer">
+              <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
                 <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="size-4" />
                 <span>Status Aktif (Ditampilkan di form booking)</span>
               </label>
@@ -354,7 +354,7 @@ function PackagesManager() {
             untuk mengatur galeri foto.
           </DialogDescription>
           {errorMsg ? <Alert tone="danger">{errorMsg}</Alert> : null}
-          <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <Field id="pkg-name" label="Nama Paket" required>
               <Input id="pkg-name" value={name} onChange={(e) => {
                 setName(e.target.value);
@@ -383,7 +383,7 @@ function PackagesManager() {
                 <Input id="pkg-maxpax" type="number" value={maxPax} onChange={(e) => setMaxPax(Number(e.target.value))} required />
               </Field>
             </div>
-            <label className="flex items-center gap-2 text-meta cursor-pointer">
+            <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="size-4" />
               <span>Status Aktif (Dijual di halaman publik)</span>
             </label>
@@ -486,7 +486,7 @@ function JeepsManager() {
           <DialogTitle>{editingId ? "Edit Jeep" : "Tambah Jeep Baru"}</DialogTitle>
           <DialogDescription>Daftarkan unit Jeep beserta plat nomor dan kapasitasnya.</DialogDescription>
           {errorMsg ? <Alert tone="danger">{errorMsg}</Alert> : null}
-          <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <Field id="jeep-plate" label="Plat Nomor" required>
               <Input id="jeep-plate" value={plateNumber} onChange={(e) => setPlateNumber(e.target.value.toUpperCase())} placeholder="Z 1234 ABC" required />
             </Field>
@@ -606,7 +606,7 @@ function MeetingPointsManager() {
           <DialogTitle>{editingId ? "Edit Titik Kumpul" : "Tambah Titik Kumpul"}</DialogTitle>
           <DialogDescription>Lokasi awal keberangkatan peserta offroad.</DialogDescription>
           {errorMsg ? <Alert tone="danger">{errorMsg}</Alert> : null}
-          <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
             <Field id="mp-name" label="Nama Lokasi" required>
               <Input id="mp-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Basecamp Garut Offroad" required />
             </Field>
@@ -621,7 +621,7 @@ function MeetingPointsManager() {
                 <Input id="mp-lng" type="number" step="any" value={longitude} onChange={(e) => setLongitude(Number(e.target.value))} required />
               </Field>
             </div>
-            <label className="flex items-center gap-2 text-meta cursor-pointer">
+            <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
               <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="size-4" />
               <span>Status Aktif</span>
             </label>

@@ -24,8 +24,8 @@ export function Field({
   className,
 }: FieldProps) {
   return (
-    <div className={cn("space-y-2", className)}>
-      <label htmlFor={id} className="block text-meta font-semibold">
+    <div className={cn("space-y-2.5", className)}>
+      <label htmlFor={id} className="block text-meta font-medium text-foreground">
         {label}
         {required ? (
           <span className="ml-1 text-destructive" aria-hidden="true">

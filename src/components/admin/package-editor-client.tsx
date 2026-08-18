@@ -207,7 +207,7 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
             </Link>
           </Button>
           <div>
-            <h1 className="text-title font-bold text-foreground sm:text-2xl">
+            <h1 className="text-section font-bold text-foreground">
               Edit Paket: {query.data.pkg.name}
             </h1>
             <p className="text-meta text-muted-foreground">
@@ -297,7 +297,7 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
                 </Field>
               </div>
 
-              <label className="flex items-center gap-2 cursor-pointer text-meta">
+              <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={isActive}

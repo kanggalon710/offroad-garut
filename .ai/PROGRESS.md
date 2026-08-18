@@ -1,3 +1,15 @@
+## 2026-08-18 - Visual polish & spacing overhaul UI Admin
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Antarmuka admin terasa terlalu padat, hirarki judul tidak bertingkat dengan jelas, dan form input terkesan kaku/berdesakan.
+**Perubahan:**
+- `src/app/(admin)/layout.tsx`: Perbesar wadah layout admin dari `max-w-3xl` ke `max-w-5xl` (1024px) dengan padding responsif.
+- `src/components/admin/admin-header.tsx`: Sesuaikan lebar ke `max-w-5xl`, tingkatkan tinggi tab ke 48px, hover state border tipis.
+- `src/components/ui/field.tsx`: Jarak label ke control `space-y-2.5`, label weight `font-medium`.
+- `src/components/admin/master-data-client.tsx`: H1 gunakan `text-section`, seragamkan `space-y-4` di seluruh dialog form, perbaiki checkbox row.
+- `src/components/admin/package-editor-client.tsx`: Perbaiki checkbox row dengan `py-1 select-none`.
+**File:** src/app/(admin)/layout.tsx, src/components/admin/admin-header.tsx, src/components/ui/field.tsx, src/components/admin/master-data-client.tsx, src/components/admin/package-editor-client.tsx
+**Catatan:** `npm run typecheck` dan `npm run lint` nol error.
+
 ## 2026-08-18 - Halaman edit paket dedicated + carousel galeri paket
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Pemilik tidak puas dengan dialog edit paket yang minim (tidak bisa kelola foto). Halaman detail paket publik hanya menampilkan satu foto statis, tidak menarik.

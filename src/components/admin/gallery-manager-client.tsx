@@ -175,7 +175,7 @@ export function GalleryManagerClient() {
     <div className="space-y-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-title font-bold text-foreground sm:text-2xl">
+          <h1 className="text-section font-bold text-foreground">
             Kelola Galeri & Album (Patreon-Style)
           </h1>
           <p className="text-meta text-muted-foreground">

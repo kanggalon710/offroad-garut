@@ -54,9 +54,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <AdminHeader name={session.user.name ?? "Pengelola"} />
-      {/* Satu kolom, padding lega: dashboard ini dipakai sambil berdiri
-          di basecamp, bukan di depan laptop (PRD §1 persona admin). */}
-      <main id="konten" className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6">
+      <main id="konten" className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6 md:px-8">
         {children}
       </main>
     </div>
