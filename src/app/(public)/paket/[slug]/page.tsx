@@ -1,12 +1,12 @@
 import { Check, Clock, MapPin, Users } from "lucide-react";
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { TRPCError } from "@trpc/server";
 
 import { MeetingMapLoader } from "@/components/domain/meeting-map-loader";
+import { PackageGalleryCarousel } from "@/components/domain/package-gallery-carousel";
 import { Container } from "@/components/shared/container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -75,9 +75,6 @@ export default async function PackageDetailPage({ params }: PageProps) {
 
   if (!pkg) notFound();
 
-  const cover = pkg.images[0];
-  const gallery = pkg.images.slice(1, 4);
-
   return (
     <>
       <Container className="pt-8">
@@ -101,36 +98,11 @@ export default async function PackageDetailPage({ params }: PageProps) {
       <Container className="py-8">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="space-y-8 lg:col-span-2">
-            <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[var(--radius-card)] bg-muted">
-              <Image
-                src={cover?.imageUrl ?? FALLBACK_IMAGE}
-                alt={cover?.alt ?? `Suasana perjalanan paket ${pkg.name}`}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 66vw"
-                className="object-cover"
-              />
-            </div>
-
-            {gallery.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
-                {gallery.map((image) => (
-                  <div
-                    key={image.id}
-                    className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-control)] bg-muted"
-                  >
-                    <Image
-                      src={image.imageUrl}
-                      alt={image.alt ?? `Foto lain paket ${pkg.name}`}
-                      fill
-                      loading="lazy"
-                      sizes="33vw"
-                      className="object-cover"
-                    />
-                  </div>
-                ))}
-              </div>
-            ) : null}
+            <PackageGalleryCarousel
+              images={pkg.images}
+              fallbackImage={FALLBACK_IMAGE}
+              packageName={pkg.name}
+            />
 
             <div>
               <h1 className="text-section sm:text-[2rem]">{pkg.name}</h1>

@@ -1,3 +1,16 @@
+## 2026-08-18 - Halaman edit paket dedicated + carousel galeri paket
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pemilik tidak puas dengan dialog edit paket yang minim (tidak bisa kelola foto). Halaman detail paket publik hanya menampilkan satu foto statis, tidak menarik.
+**Perubahan:**
+- `src/server/routers/admin.ts`: 5 prosedur tRPC baru untuk CRUD `packageGalleries` (`getPackageDetailAdmin`, `addPackageImage`, `addPackageImagesBatch`, `removePackageImage`, `setPackagePrimaryImage`).
+- `src/app/(admin)/packages/[id]/page.tsx`: Halaman edit paket dedicated (bukan dialog), verifikasi paket lewat SSR.
+- `src/components/admin/package-editor-client.tsx`: Komponen client lengkap untuk edit detail paket + kelola galeri foto (unggah langsung, pilih dari galeri publik, atur sampul utama, hapus foto).
+- `src/components/admin/master-data-client.tsx`: Dialog paket menjadi create-only (tidak edit inline). Tombol "Edit Detail & Foto" mengarah ke `/packages/[id]`.
+- `src/components/domain/package-gallery-carousel.tsx`: Carousel client component dengan auto-slide 5 detik, panah kiri/kanan, baris thumbnail di bawah, klik foto buka lightbox fullscreen.
+- `src/app/(public)/paket/[slug]/page.tsx`: Ganti static cover + grid 3 foto dengan `PackageGalleryCarousel`.
+**File:** src/server/routers/admin.ts, src/app/(admin)/packages/[id]/page.tsx, src/components/admin/package-editor-client.tsx, src/components/admin/master-data-client.tsx, src/components/domain/package-gallery-carousel.tsx, src/app/(public)/paket/[slug]/page.tsx
+**Catatan:** `npm run typecheck` dan `npm run lint` bersih (0 error). Tabel `packageGalleries` sudah ada di skema sebelumnya, tidak perlu migrasi.
+
 ## 2026-08-15 - Skrip set-admin.cjs untuk cPanel (tsx Wasm OOM)
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** `npm run db:seed` gagal di cPanel Terminal karena `tsx` (parser Wasm) kena `RangeError: WebAssembly.instantiate(): Out of memory` akibat RLIMIT_AS ketat. Pendaftaran akun lewat endpoint `/api/auth/sign-up/email` berhasil, jadi yang tersisa hanya menyetel role & emailVerified.

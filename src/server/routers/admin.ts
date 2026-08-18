@@ -12,6 +12,7 @@ import {
   bookings,
   jeeps,
   meetingPoints,
+  packageGalleries,
   packages,
 } from "@/lib/db/schema";
 import { adminProcedure, router } from "../trpc";
@@ -546,6 +547,200 @@ export const adminRouter = router({
           changedBy: ctx.user.id,
         });
       });
+      return { success: true as const };
+    }),
+
+  getPackageDetailAdmin: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const [pkg] = await ctx.db
+        .select()
+        .from(packages)
+        .where(and(eq(packages.id, input.id), isNull(packages.deletedAt)));
+
+      if (!pkg) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Paket tidak ditemukan",
+        });
+      }
+
+      const images = await ctx.db
+        .select()
+        .from(packageGalleries)
+        .where(eq(packageGalleries.packageId, pkg.id))
+        .orderBy(asc(packageGalleries.sortOrder));
+
+      return { pkg, images };
+    }),
+
+  addPackageImage: adminProcedure
+    .input(
+      z.object({
+        packageId: z.string().uuid(),
+        imageUrl: z.string().min(1).max(1024),
+        alt: z.string().max(255).optional(),
+        isPrimary: z.boolean().default(false),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ count: count() })
+          .from(packageGalleries)
+          .where(eq(packageGalleries.packageId, input.packageId));
+
+        const sortOrder = existing[0]?.count ?? 0;
+
+        if (input.isPrimary) {
+          await tx
+            .update(packageGalleries)
+            .set({ isPrimary: false })
+            .where(eq(packageGalleries.packageId, input.packageId));
+        }
+
+        await tx.insert(packageGalleries).values({
+          id,
+          packageId: input.packageId,
+          imageUrl: input.imageUrl,
+          alt: input.alt ?? null,
+          isPrimary: input.isPrimary,
+          sortOrder,
+        });
+
+        await catatAudit(tx, {
+          tableName: "package_galleries",
+          recordId: id,
+          action: "INSERT",
+          newData: { packageId: input.packageId, imageUrl: input.imageUrl },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { id, success: true as const };
+    }),
+
+  addPackageImagesBatch: adminProcedure
+    .input(
+      z.object({
+        packageId: z.string().uuid(),
+        imageUrls: z.array(z.string().min(1).max(1024)).min(1),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        const existing = await tx
+          .select({ count: count() })
+          .from(packageGalleries)
+          .where(eq(packageGalleries.packageId, input.packageId));
+
+        const startSortOrder = existing[0]?.count ?? 0;
+        const hasPrimary = (
+          await tx
+            .select({ count: count() })
+            .from(packageGalleries)
+            .where(
+              and(
+                eq(packageGalleries.packageId, input.packageId),
+                eq(packageGalleries.isPrimary, true),
+              ),
+            )
+        )[0]?.count ?? 0;
+
+        for (let i = 0; i < input.imageUrls.length; i += 1) {
+          const id = randomUUID();
+          const imageUrl = input.imageUrls[i]!;
+          const isPrimary = hasPrimary === 0 && i === 0;
+
+          await tx.insert(packageGalleries).values({
+            id,
+            packageId: input.packageId,
+            imageUrl,
+            alt: null,
+            isPrimary,
+            sortOrder: startSortOrder + i,
+          });
+        }
+
+        await catatAudit(tx, {
+          tableName: "package_galleries",
+          recordId: input.packageId,
+          action: "INSERT",
+          newData: { count: input.imageUrls.length },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { success: true as const };
+    }),
+
+  removePackageImage: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        const [target] = await tx
+          .select()
+          .from(packageGalleries)
+          .where(eq(packageGalleries.id, input.id));
+
+        if (!target) return;
+
+        await tx
+          .delete(packageGalleries)
+          .where(eq(packageGalleries.id, input.id));
+
+        if (target.isPrimary) {
+          const [nextPrimary] = await tx
+            .select()
+            .from(packageGalleries)
+            .where(eq(packageGalleries.packageId, target.packageId))
+            .orderBy(asc(packageGalleries.sortOrder))
+            .limit(1);
+
+          if (nextPrimary) {
+            await tx
+              .update(packageGalleries)
+              .set({ isPrimary: true })
+              .where(eq(packageGalleries.id, nextPrimary.id));
+          }
+        }
+
+        await catatAudit(tx, {
+          tableName: "package_galleries",
+          recordId: input.id,
+          action: "DELETE",
+          oldData: { packageId: target.packageId, imageUrl: target.imageUrl },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { success: true as const };
+    }),
+
+  setPackagePrimaryImage: adminProcedure
+    .input(z.object({ id: z.string().uuid(), packageId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(packageGalleries)
+          .set({ isPrimary: false })
+          .where(eq(packageGalleries.packageId, input.packageId));
+
+        await tx
+          .update(packageGalleries)
+          .set({ isPrimary: true })
+          .where(eq(packageGalleries.id, input.id));
+
+        await catatAudit(tx, {
+          tableName: "package_galleries",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: { isPrimary: true },
+          changedBy: ctx.user.id,
+        });
+      });
+
       return { success: true as const };
     }),
 

@@ -9,6 +9,8 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Alert } from "@/components/ui/alert";
@@ -247,11 +249,11 @@ function AddOnsManager() {
 /* ==================== Packages Manager ==================== */
 
 function PackagesManager() {
+  const router = useRouter();
   const utils = api.useUtils();
   const query = api.admin.getPackages.useQuery();
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
@@ -263,11 +265,12 @@ function PackagesManager() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const createMutation = api.admin.createPackage.useMutation({
-    onSuccess: () => { void utils.admin.getPackages.invalidate(); setDialogOpen(false); resetForm(); },
-    onError: (err) => setErrorMsg(err.message),
-  });
-  const updateMutation = api.admin.updatePackage.useMutation({
-    onSuccess: () => { void utils.admin.getPackages.invalidate(); setDialogOpen(false); resetForm(); },
+    onSuccess: (data) => {
+      void utils.admin.getPackages.invalidate();
+      setCreateDialogOpen(false);
+      resetForm();
+      router.push(`/packages/${data.id}`);
+    },
     onError: (err) => setErrorMsg(err.message),
   });
   const deleteMutation = api.admin.deletePackage.useMutation({
@@ -275,26 +278,30 @@ function PackagesManager() {
   });
 
   function resetForm() {
-    setEditingId(null); setName(""); setSlug(""); setDescription("");
+    setName(""); setSlug(""); setDescription("");
     setDurationHours(3); setPricePerPaxIdr(350000); setMinPax(3); setMaxPax(100); setIsActive(true); setErrorMsg(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
-    const payload = {
-      name, slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      description: description || undefined, durationHours, pricePerPaxIdr, minPax, maxPax, isActive,
-    };
-    if (editingId) updateMutation.mutate({ id: editingId, ...payload });
-    else createMutation.mutate(payload);
+    createMutation.mutate({
+      name,
+      slug: slug || name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+      description: description || undefined,
+      durationHours,
+      pricePerPaxIdr,
+      minPax,
+      maxPax,
+      isActive,
+    });
   }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-title font-bold">Daftar Paket Tour</h2>
-        <Button onClick={() => { resetForm(); setDialogOpen(true); }}>
+        <Button onClick={() => { resetForm(); setCreateDialogOpen(true); }}>
           <Plus className="size-4" aria-hidden="true" />
           Tambah Paket
         </Button>
@@ -322,14 +329,11 @@ function PackagesManager() {
                 <p className="mt-2 text-base font-extrabold text-primary">{formatIDR(item.pricePerPaxIdr)} / pax</p>
               </div>
               <div className="mt-4 flex gap-2 justify-end border-t border-border pt-3">
-                <Button variant="outline" onClick={() => {
-                  resetForm(); setEditingId(item.id); setName(item.name); setSlug(item.slug);
-                  setDescription(item.description ?? ""); setDurationHours(item.durationHours);
-                  setPricePerPaxIdr(item.pricePerPaxIdr); setMinPax(item.minPax); setMaxPax(item.maxPax);
-                  setIsActive(item.isActive); setDialogOpen(true);
-                }}>
-                  <Edit2 className="size-3.5" aria-hidden="true" />
-                  Edit
+                <Button variant="outline" asChild>
+                  <Link href={`/packages/${item.id}`}>
+                    <Edit2 className="size-3.5" aria-hidden="true" />
+                    Edit Detail & Foto
+                  </Link>
                 </Button>
                 <Button variant="ghost" className="text-destructive hover:bg-destructive/10"
                   onClick={() => { if (confirm(`Hapus paket "${item.name}"?`)) deleteMutation.mutate({ id: item.id }); }}>
@@ -342,16 +346,19 @@ function PackagesManager() {
         </div>
       )}
 
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
         <DialogContent>
-          <DialogTitle>{editingId ? "Edit Paket" : "Tambah Paket Tour"}</DialogTitle>
-          <DialogDescription>Atur nama, durasi, dan harga per peserta paket wisata.</DialogDescription>
+          <DialogTitle>Tambah Paket Tour</DialogTitle>
+          <DialogDescription>
+            Setelah paket dibuat, kamu akan diarahkan ke halaman edit lengkap
+            untuk mengatur galeri foto.
+          </DialogDescription>
           {errorMsg ? <Alert tone="danger">{errorMsg}</Alert> : null}
           <form onSubmit={handleSubmit} className="mt-4 space-y-3">
             <Field id="pkg-name" label="Nama Paket" required>
               <Input id="pkg-name" value={name} onChange={(e) => {
                 setName(e.target.value);
-                if (!editingId) setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
+                setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, "-"));
               }} required />
             </Field>
             <Field id="pkg-slug" label="URL Slug" required>
@@ -381,8 +388,10 @@ function PackagesManager() {
               <span>Status Aktif (Dijual di halaman publik)</span>
             </label>
             <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-              <Button type="submit">Simpan</Button>
+              <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Batal</Button>
+              <Button type="submit" disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Menyimpan..." : "Buat & Lanjut Edit"}
+              </Button>
             </div>
           </form>
         </DialogContent>

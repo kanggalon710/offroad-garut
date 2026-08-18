@@ -17,7 +17,14 @@
       "WebFetch(www.pakisutiket.com)",
       "WebFetch(sfindo.com)",
       "WebFetch(www.google.com)",
-      "Skill(writing-plans)"
+      "Skill(writing-plans)",
+      "Bash(cat *)",
+      "Bash(ssh-keygen *)",
+      "Bash(ssh-agent *)",
+      "Bash(eof)",
+      "Bash(chmod *)",
+      "Bash(ssh-add *)",
+      "Bash(rm *)"
     ]
   },
   "$version": 4
