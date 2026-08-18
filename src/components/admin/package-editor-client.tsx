@@ -198,12 +198,12 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
   return (
     <div className="space-y-6">
       {/* Header & Back Button */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="h-10 px-4 text-meta" asChild>
+          <Button variant="outline" className="h-10 px-4 text-meta shrink-0" asChild>
             <Link href="/master">
               <ArrowLeft className="size-4" aria-hidden="true" />
-              Kembali ke Master Data
+              Kembali
             </Link>
           </Button>
           <div>
@@ -220,12 +220,130 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
       {errorMsg ? <Alert tone="danger">{errorMsg}</Alert> : null}
       {successMsg ? <Alert tone="success">{successMsg}</Alert> : null}
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Kolom Kiri: Form Detail Paket */}
-        <div className="lg:col-span-1">
-          <Card className="p-5">
-            <h2 className="text-title font-bold">Informasi Paket</h2>
-            <form onSubmit={handleSubmitPackage} className="mt-4 space-y-4">
+      <div className="space-y-6">
+        {/* Galeri Foto Paket (Di Atas - Full Width) */}
+        <Card className="p-5">
+          <div className="flex flex-col gap-3 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-title font-bold">Galeri Foto Paket</h2>
+              <p className="text-meta text-muted-foreground">
+                Foto-foto ini akan tampil sebagai slide carousel pada halaman
+                detail paket pelanggan.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 sm:shrink-0">
+              <label className="cursor-pointer">
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-[var(--radius-control)] border border-border bg-surface px-4 text-meta font-medium text-foreground transition-colors hover:bg-muted active:bg-muted/80">
+                  <Upload className="size-4 text-muted-foreground" aria-hidden="true" />
+                  {uploading ? "Mengunggah..." : "Unggah Foto Baru"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  disabled={uploading}
+                  onChange={handleFileUpload}
+                  className="sr-only"
+                />
+              </label>
+
+              <Button
+                variant="primary"
+                className="min-h-11 px-4 text-meta"
+                onClick={() => {
+                  setSelectedUrls([]);
+                  setPickerOpen(true);
+                }}
+              >
+                <ImageIcon className="size-4" aria-hidden="true" />
+                Pilih dari Galeri Publik
+              </Button>
+            </div>
+          </div>
+
+          {/* List Foto Terpasang */}
+          <div className="mt-5">
+            {images.length === 0 ? (
+              <div className="rounded-[var(--radius-card)] border border-dashed border-border p-8 text-center text-muted-foreground">
+                <ImageIcon className="mx-auto size-8 text-muted-foreground/50" />
+                <p className="mt-2 text-meta font-medium">
+                  Belum ada foto untuk paket ini.
+                </p>
+                <p className="mt-1 text-legal text-muted-foreground">
+                  Unggah foto baru atau pilih dari Galeri Publik agar halaman
+                  detail paket menarik.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+                {images.map((img) => (
+                  <div
+                    key={img.id}
+                    className="group relative flex flex-col justify-between overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface shadow-xs transition hover:shadow-md"
+                  >
+                    <div className="relative aspect-[4/3] w-full bg-muted">
+                      <Image
+                        src={img.imageUrl}
+                        alt={img.alt ?? "Foto Paket"}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                        className="object-cover"
+                      />
+                      {img.isPrimary ? (
+                        <div className="absolute left-2 top-2">
+                          <Badge tone="forest" className="shadow-xs">
+                            <Star className="size-3 fill-current" /> Sampul Utama
+                          </Badge>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-border p-2 bg-surface">
+                      {!img.isPrimary ? (
+                        <Button
+                          variant="ghost"
+                          className="h-8 px-2.5 text-legal text-muted-foreground hover:text-foreground"
+                          onClick={() =>
+                            setPrimaryMut.mutate({
+                              id: img.id,
+                              packageId,
+                            })
+                          }
+                        >
+                          Jadikan Utama
+                        </Button>
+                      ) : (
+                        <span className="px-2.5 text-legal font-semibold text-primary">
+                          Sampul
+                        </span>
+                      )}
+
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                        onClick={() => {
+                          if (confirm("Hapus foto ini dari paket?")) {
+                            removeImageMut.mutate({ id: img.id });
+                          }
+                        }}
+                        aria-label="Hapus foto paket"
+                      >
+                        <Trash2 className="size-4" aria-hidden="true" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Informasi Paket (Di Bawah - Full Width) */}
+        <Card className="p-5">
+          <h2 className="text-title font-bold border-b border-border pb-3">Informasi Paket</h2>
+          <form onSubmit={handleSubmitPackage} className="mt-4 space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
               <Field id="pkg-name" label="Nama Paket" required>
                 <Input
                   id="pkg-name"
@@ -243,200 +361,82 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
                   required
                 />
               </Field>
+            </div>
 
-              <Field id="pkg-desc" label="Deskripsi">
-                <Textarea
-                  id="pkg-desc"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  rows={4}
+            <Field id="pkg-desc" label="Deskripsi">
+              <Textarea
+                id="pkg-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+              />
+            </Field>
+
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <Field id="pkg-price" label="Harga / Pax (IDR)" required>
+                <Input
+                  id="pkg-price"
+                  type="number"
+                  value={pricePerPaxIdr}
+                  onChange={(e) => setPricePerPaxIdr(Number(e.target.value))}
+                  required
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Field id="pkg-price" label="Harga / Pax (IDR)" required>
-                  <Input
-                    id="pkg-price"
-                    type="number"
-                    value={pricePerPaxIdr}
-                    onChange={(e) => setPricePerPaxIdr(Number(e.target.value))}
-                    required
-                  />
-                </Field>
-
-                <Field id="pkg-duration" label="Durasi (Jam)" required>
-                  <Input
-                    id="pkg-duration"
-                    type="number"
-                    value={durationHours}
-                    onChange={(e) => setDurationHours(Number(e.target.value))}
-                    required
-                  />
-                </Field>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Field id="pkg-minpax" label="Min Pax" required>
-                  <Input
-                    id="pkg-minpax"
-                    type="number"
-                    value={minPax}
-                    onChange={(e) => setMinPax(Number(e.target.value))}
-                    required
-                  />
-                </Field>
-
-                <Field id="pkg-maxpax" label="Max Pax" required>
-                  <Input
-                    id="pkg-maxpax"
-                    type="number"
-                    value={maxPax}
-                    onChange={(e) => setMaxPax(Number(e.target.value))}
-                    required
-                  />
-                </Field>
-              </div>
-
-              <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="size-4"
+              <Field id="pkg-duration" label="Durasi (Jam)" required>
+                <Input
+                  id="pkg-duration"
+                  type="number"
+                  value={durationHours}
+                  onChange={(e) => setDurationHours(Number(e.target.value))}
+                  required
                 />
-                <span>Status Aktif (Dijual di halaman publik)</span>
-              </label>
+              </Field>
 
+              <Field id="pkg-minpax" label="Min Pax" required>
+                <Input
+                  id="pkg-minpax"
+                  type="number"
+                  value={minPax}
+                  onChange={(e) => setMinPax(Number(e.target.value))}
+                  required
+                />
+              </Field>
+
+              <Field id="pkg-maxpax" label="Max Pax" required>
+                <Input
+                  id="pkg-maxpax"
+                  type="number"
+                  value={maxPax}
+                  onChange={(e) => setMaxPax(Number(e.target.value))}
+                  required
+                />
+              </Field>
+            </div>
+
+            <label className="flex items-center gap-3 py-1 text-meta cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="size-4"
+              />
+              <span>Status Aktif (Dijual di halaman publik)</span>
+            </label>
+
+            <div className="pt-2">
               <Button
                 type="submit"
-                className="w-full"
+                className="min-h-11 px-6 sm:w-auto w-full"
                 disabled={updatePackageMut.isPending}
               >
                 {updatePackageMut.isPending
                   ? "Menyimpan..."
                   : "Simpan Perubahan Informasi"}
               </Button>
-            </form>
-          </Card>
-        </div>
-
-        {/* Kolom Kanan: Foto & Galeri Paket */}
-        <div className="space-y-4 lg:col-span-2">
-          <Card className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-              <div>
-                <h2 className="text-title font-bold">Galeri Foto Paket</h2>
-                <p className="text-meta text-muted-foreground">
-                  Foto-foto ini akan tampil sebagai slide carousel pada halaman
-                  detail paket pelanggan.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <label className="cursor-pointer">
-                  <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-meta font-medium text-foreground hover:bg-muted">
-                    <Upload className="size-4" aria-hidden="true" />
-                    {uploading ? "Mengunggah..." : "Unggah Foto Baru"}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    disabled={uploading}
-                    onChange={handleFileUpload}
-                    className="sr-only"
-                  />
-                </label>
-
-                <Button
-                  variant="primary"
-                  onClick={() => {
-                    setSelectedUrls([]);
-                    setPickerOpen(true);
-                  }}
-                >
-                  <ImageIcon className="size-4" aria-hidden="true" />
-                  Pilih dari Galeri Publik
-                </Button>
-              </div>
             </div>
-
-            {/* List Foto Terpasang */}
-            <div className="mt-4">
-              {images.length === 0 ? (
-                <div className="rounded-[var(--radius-card)] border border-dashed border-border p-8 text-center text-muted-foreground">
-                  <ImageIcon className="mx-auto size-8 text-muted-foreground/50" />
-                  <p className="mt-2 text-meta font-medium">
-                    Belum ada foto untuk paket ini.
-                  </p>
-                  <p className="mt-1 text-legal text-muted-foreground">
-                    Unggah foto baru atau pilih dari Galeri Publik agar halaman
-                    detail paket menarik.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
-                  {images.map((img) => (
-                    <div
-                      key={img.id}
-                      className="group relative overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface shadow-sm"
-                    >
-                      <div className="relative aspect-[4/3] w-full bg-muted">
-                        <Image
-                          src={img.imageUrl}
-                          alt={img.alt ?? "Foto Paket"}
-                          fill
-                          sizes="(max-width: 768px) 50vw, 33vw"
-                          className="object-cover"
-                        />
-                        {img.isPrimary ? (
-                          <div className="absolute left-2 top-2">
-                            <Badge tone="forest">
-                              <Star className="size-3 fill-current" /> Sampul Utama
-                            </Badge>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      <div className="flex items-center justify-between p-2.5">
-                        {!img.isPrimary ? (
-                          <Button
-                            variant="ghost"
-                            className="h-9 px-3 text-legal text-muted-foreground hover:text-foreground"
-                            onClick={() =>
-                              setPrimaryMut.mutate({
-                                id: img.id,
-                                packageId,
-                              })
-                            }
-                          >
-                            Jadikan Utama
-                          </Button>
-                        ) : (
-                          <span className="text-legal font-semibold text-primary">
-                            Sampul
-                          </span>
-                        )}
-
-                        <Button
-                          variant="ghost"
-                          className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                          onClick={() => {
-                            if (confirm("Hapus foto ini dari paket?")) {
-                              removeImageMut.mutate({ id: img.id });
-                            }
-                          }}
-                        >
-                          <Trash2 className="size-3.5" aria-hidden="true" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
+          </form>
+        </Card>
       </div>
 
       {/* Modal Dialog Picker Galeri Publik */}

@@ -84,6 +84,7 @@ pemilik project.
 
 ## Selesai
 
+- [x] 2026-08-18 Perbaikan tata letak UI Admin (full-width layout di /packages/[id], tombol 'Kembali', galeri foto di atas, tab master data 2-kolom mobile / flex desktop). Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-18 Visual polish & spacing overhaul UI Admin (layout max-w-5xl, tab 48px, field spacing, heading hierarchy, form space-y-4, checkbox rows). Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-18 Halaman edit paket dedicated `/packages/[id]` (form detail + kelola foto/galeri publik) & carousel slide/lightbox di halaman paket publik `/paket/[slug]`. Lihat `.ai/PROGRESS.md`.
 - [x] 2026-08-15 Pengaturan nomor WhatsApp utama & alternatif di `/pengaturan` + auto-fill di form booking. Lihat `.ai/PROGRESS.md`.

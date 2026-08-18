@@ -44,10 +44,17 @@ export function MasterDataClient() {
         </p>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      <div
+        className="grid grid-cols-2 gap-2 border-b border-border pb-3 sm:flex sm:flex-wrap sm:justify-start"
+        role="tablist"
+        aria-label="Kategori master data"
+      >
         <Button
           variant={activeTab === "addons" ? "primary" : "outline"}
           onClick={() => setActiveTab("addons")}
+          className="min-h-11 justify-center sm:flex-1 sm:flex-none"
+          role="tab"
+          aria-selected={activeTab === "addons"}
         >
           <Sparkles className="size-4" aria-hidden="true" />
           Layanan Add-On
@@ -55,6 +62,9 @@ export function MasterDataClient() {
         <Button
           variant={activeTab === "packages" ? "primary" : "outline"}
           onClick={() => setActiveTab("packages")}
+          className="min-h-11 justify-center sm:flex-1 sm:flex-none"
+          role="tab"
+          aria-selected={activeTab === "packages"}
         >
           <PackageIcon className="size-4" aria-hidden="true" />
           Paket Tour
@@ -62,6 +72,9 @@ export function MasterDataClient() {
         <Button
           variant={activeTab === "jeeps" ? "primary" : "outline"}
           onClick={() => setActiveTab("jeeps")}
+          className="min-h-11 justify-center sm:flex-1 sm:flex-none"
+          role="tab"
+          aria-selected={activeTab === "jeeps"}
         >
           <Car className="size-4" aria-hidden="true" />
           Armada Jeep
@@ -69,6 +82,9 @@ export function MasterDataClient() {
         <Button
           variant={activeTab === "meeting_points" ? "primary" : "outline"}
           onClick={() => setActiveTab("meeting_points")}
+          className="min-h-11 justify-center sm:flex-1 sm:flex-none"
+          role="tab"
+          aria-selected={activeTab === "meeting_points"}
         >
           <MapPin className="size-4" aria-hidden="true" />
           Titik Kumpul

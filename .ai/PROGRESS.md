@@ -1,3 +1,12 @@
+## 2026-08-18 - Perbaikan tata letak UI Admin (full-width, tab master data)
+**Agen:** qwen | **Status:** selesai
+**Kenapa:** Pemilik meminta halaman edit paket tidak lagi sempit (grid 2 kolom), galeri harus tampil di atas dan keduanya full width. Tombol tab di /master tidak konsisten di mobile vs desktop.
+**Perubahan:**
+- `src/components/admin/package-editor-client.tsx`: Teks tombol kembali jadi "Kembali". Layout diubah dari grid 2-kolom menjadi tumpukan vertikal full-width: Galeri Foto di atas, Informasi Paket di bawah. Tombol unggah/pilih galeri diberi min-h-11 dan padding konsisten. Grid foto jadi 2/3/4 kolom responsif, kartu foto pakai shadow-xs + border-t untuk area aksi. Form paket dirapikan jadi grid 2 kolom (nama/slug), 4 kolom angka (harga/durasi/min/max) di desktop.
+- `src/components/admin/master-data-client.tsx`: Tombol tab master data pakai grid 2 kolom di mobile dan flex wrap di desktop, min-h-11, role=tablist/tab + aria-selected.
+**File:** src/components/admin/package-editor-client.tsx, src/components/admin/master-data-client.tsx
+**Catatan:** `npm run typecheck` dan `npm run lint` nol error.
+
 ## 2026-08-18 - Visual polish & spacing overhaul UI Admin
 **Agen:** qwen | **Status:** selesai
 **Kenapa:** Antarmuka admin terasa terlalu padat, hirarki judul tidak bertingkat dengan jelas, dan form input terkesan kaku/berdesakan.
