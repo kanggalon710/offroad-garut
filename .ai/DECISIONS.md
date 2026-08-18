@@ -60,3 +60,47 @@ riwayatnya tetap boleh panjang.
 **Konsekuensi:** Ada protokol tambahan yang harus dipatuhi agen (baca TODO sebelum mulai,
 perbarui PROGRESS dan TODO sebelum melapor selesai). Protokol itu ditulis di bagian 13
 `~/.ai/AGENTS.md` dan masuk checklist penyelesaian.
+
+## 2026-08-19 - Pemecahan file besar jadi folder per-domain
+
+**Konteks:** `src/components/admin/master-data-client.tsx` mencapai 653 baris berisi
+empat manager CRUD yang tidak saling bergantung (add-on, paket, jeep, titik kumpul).
+Setiap perubahan kecil pada satu manager memaksa membaca ulang seluruh file.
+
+**Opsi:** (a) biarkan satu file, (b) pecah jadi beberapa file sejajar dengan awalan nama
+(`master-data-addons.tsx`, dst), (c) pecah jadi folder dengan `index.tsx` sebagai
+komposisi.
+
+**Pilihan:** (c). `src/components/admin/master-data/` dengan `index.tsx`,
+`addons-manager.tsx`, `packages-manager.tsx`, `jeeps-manager.tsx`,
+`meeting-points-manager.tsx`, dan `section-toolbar.tsx`.
+
+**Alasan:** jalur impor pemanggilnya tidak berubah bentuknya
+(`@/components/admin/master-data`), folder menahan file pendukung yang hanya dipakai di
+dalamnya (`section-toolbar.tsx`) supaya tidak mengotori `components/admin/`, dan tiap
+manager bisa direview sendiri. Opsi (b) menyebarkan enam file setara ke folder yang sudah
+padat tanpa menandakan mana yang saling terkait.
+
+**Preseden:** komponen client yang melewati sekitar 400 baris dan isinya beberapa bagian
+yang berdiri sendiri dipecah jadi folder seperti ini, bukan dibiarkan tumbuh.
+
+## 2026-08-19 - Tombol ber-aria-pressed, bukan ARIA tabs
+
+**Konteks:** `/master` memakai `role="tablist"` dan `role="tab"` tanpa `role="tabpanel"`,
+`aria-controls`, maupun navigasi panah dengan roving tabindex. Sementara filter di
+`/orders` sudah memakai `aria-pressed` dengan benar. Dua pola berbeda untuk kebutuhan yang
+sama.
+
+**Opsi:** (a) lengkapi jadi ARIA tabs yang benar di kedua tempat, (b) buang role tab dan
+seragamkan ke `aria-pressed`.
+
+**Pilihan:** (b). Primitif `src/components/ui/segmented-control.tsx`.
+
+**Alasan:** role tab yang tidak lengkap lebih menyesatkan pembaca layar daripada
+sekumpulan tombol jujur, karena menjanjikan pola navigasi panah yang tidak ada. Pola
+`aria-pressed` sudah terbukti benar di `/orders`, jadi menaikkannya jadi milik bersama
+menghapus duplikasi sekaligus memperbaiki aksesibilitas tanpa menambah kode navigasi
+keyboard buatan sendiri.
+
+**Preseden:** jangan memasang role ARIA yang kontrak perilakunya tidak dipenuhi. Kalau
+pola lengkapnya tidak dibangun, pakai elemen dan atribut yang jujur menggambarkan yang ada.

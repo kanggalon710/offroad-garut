@@ -8,11 +8,16 @@ import { Button } from "@/components/ui/button";
 import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
+/**
+ * `matches` menandai rute lain yang masih milik tab yang sama. Editor paket
+ * (/packages/[id]) hanya bisa dicapai dari Kelola Master Data, jadi tab itu
+ * yang harus menyala di sana.
+ */
 const tabs = [
-  { href: "/dashboard", label: "Hari ini", icon: LayoutDashboard },
-  { href: "/orders", label: "Semua pesanan", icon: ListChecks },
-  { href: "/master", label: "Kelola Master Data", icon: Database },
-  { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon },
+  { href: "/dashboard", label: "Hari ini", icon: LayoutDashboard, matches: ["/dashboard"] },
+  { href: "/orders", label: "Semua pesanan", icon: ListChecks, matches: ["/orders"] },
+  { href: "/master", label: "Kelola Master Data", icon: Database, matches: ["/master", "/packages"] },
+  { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon, matches: ["/gallery"] },
 ];
 
 export function AdminHeader({ name }: { name: string }) {
@@ -26,8 +31,8 @@ export function AdminHeader({ name }: { name: string }) {
   }
 
   return (
-    <header className="border-b border-border bg-surface shadow-xs">
-      <div className="mx-auto flex w-full max-w-4xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-border bg-surface shadow-[var(--shadow-card)]">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div>
           <p className="text-legal font-medium text-muted-foreground">Pengelola</p>
           <p className="font-bold text-foreground sm:text-base leading-tight">{name}</p>
@@ -43,11 +48,13 @@ export function AdminHeader({ name }: { name: string }) {
       </div>
 
       <nav
-        className="mx-auto flex w-full max-w-4xl gap-1 overflow-x-auto px-4 sm:px-6"
+        className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6"
         aria-label="Navigasi pengelola"
       >
-        {tabs.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
+        {tabs.map(({ href, label, icon: Icon, matches }) => {
+          const active = matches.some(
+            (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+          );
           return (
             <Link
               key={href}

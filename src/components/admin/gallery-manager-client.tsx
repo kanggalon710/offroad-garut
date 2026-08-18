@@ -6,6 +6,8 @@ import {
   FileText,
   Globe,
   Image as ImageIcon,
+  Images,
+  Link2,
   Lock,
   Plus,
   Trash2,
@@ -14,40 +16,55 @@ import {
 import Image from "next/image";
 import { useState } from "react";
 
+import { AdminPage } from "@/components/admin/admin-page";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { LoadingState } from "@/components/ui/loading-state";
+import { Select } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toast";
+import {
+  ALBUM_ITEM_TYPE_LABEL,
+  ALBUM_ITEM_TYPE_OPTIONS,
+  ALBUM_VISIBILITY_HINT,
+  ALBUM_VISIBILITY_LABEL,
+  ALBUM_VISIBILITY_TONE,
+  type AlbumItemType,
+  type AlbumVisibility,
+} from "@/lib/constants";
 import { api } from "@/trpc/client";
 
 export function GalleryManagerClient() {
   const utils = api.useUtils();
   const albumsQuery = api.gallery.getAlbumsAdmin.useQuery();
+  const { toast } = useToast();
 
   const [selectedAlbumId, setSelectedAlbumId] = useState<string | null>(null);
   const [albumDialogOpen, setAlbumDialogOpen] = useState(false);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Form Album State
   const [albumTitle, setAlbumTitle] = useState("");
   const [albumDesc, setAlbumDesc] = useState("");
   const [albumCoverUrl, setAlbumCoverUrl] = useState("");
-  const [albumVisibility, setAlbumVisibility] = useState<"public" | "private">("public");
+  const [albumVisibility, setAlbumVisibility] = useState<AlbumVisibility>("public");
   const [albumGdriveUrl, setAlbumGdriveUrl] = useState("");
 
   // Form Item State
-  const [itemType, setItemType] = useState<"image" | "youtube" | "pdf" | "gdrive_link">("image");
+  const [itemType, setItemType] = useState<AlbumItemType>("image");
   const [itemTitle, setItemTitle] = useState("");
   const [itemDesc, setItemDesc] = useState("");
   const [itemMediaUrl, setItemMediaUrl] = useState("");
@@ -58,6 +75,7 @@ export function GalleryManagerClient() {
       setAlbumDialogOpen(false);
       setSelectedAlbumId(data.id);
       resetAlbumForm();
+      toast("Album dibuat.");
     },
     onError: (err) => setErrorMsg(err.message),
   });
@@ -65,8 +83,10 @@ export function GalleryManagerClient() {
   const deleteAlbumMut = api.gallery.deleteAlbum.useMutation({
     onSuccess: () => {
       void utils.gallery.getAlbumsAdmin.invalidate();
-      if (selectedAlbumId) setSelectedAlbumId(null);
+      setSelectedAlbumId(null);
+      toast("Album beserta isinya dihapus.");
     },
+    onError: (err) => toast(`Gagal menghapus album: ${err.message}`, "danger"),
   });
 
   const createItemMut = api.gallery.createAlbumItem.useMutation({
@@ -75,14 +95,18 @@ export function GalleryManagerClient() {
       void utils.gallery.getAlbumDetailAdmin.invalidate();
       setItemDialogOpen(false);
       resetItemForm();
+      toast("Media ditambahkan ke album.");
     },
     onError: (err) => setErrorMsg(err.message),
   });
 
   const deleteItemMut = api.gallery.deleteAlbumItem.useMutation({
     onSuccess: () => {
+      void utils.gallery.getAlbumsAdmin.invalidate();
       void utils.gallery.getAlbumDetailAdmin.invalidate();
+      toast("Media dihapus dari album.");
     },
+    onError: (err) => toast(`Gagal menghapus media: ${err.message}`, "danger"),
   });
 
   const albumDetailQuery = api.gallery.getAlbumDetailAdmin.useQuery(
@@ -164,231 +188,292 @@ export function GalleryManagerClient() {
     });
   }
 
-  function copyShareLink(slug: string) {
+  async function copyShareLink(slug: string) {
     const url = `${window.location.origin}/album/${slug}`;
-    void navigator.clipboard.writeText(url);
-    setCopiedSlug(slug);
-    setTimeout(() => setCopiedSlug(null), 2500);
+    try {
+      await navigator.clipboard.writeText(url);
+      toast("Tautan album disalin ke papan klip.");
+    } catch {
+      toast("Peramban menolak akses papan klip. Salin tautan secara manual.", "danger");
+    }
   }
 
+  const albums = albumsQuery.data ?? [];
+  const detail = albumDetailQuery.data;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-section font-bold text-foreground">
-            Kelola Galeri & Album (Patreon-Style)
-          </h1>
-          <p className="text-meta text-muted-foreground">
-            Unggah foto/video/PDF, buat album publik atau privat dengan secret URL untuk pelanggan/keluarga.
-          </p>
-        </div>
+    <AdminPage
+      title="Kelola Galeri & Album"
+      description="Unggah foto, video, atau PDF, lalu susun jadi album publik untuk landing page atau album privat berlink rahasia."
+      width="wide"
+      actions={
         <Button onClick={() => { resetAlbumForm(); setAlbumDialogOpen(true); }}>
           <Plus className="size-4" aria-hidden="true" />
           Buat Album Baru
         </Button>
-      </div>
-
+      }
+    >
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Kolom Kiri: Daftar Album */}
-        <div className="space-y-3 lg:col-span-4">
+        {/* min-w-0 wajib: item grid tidak menyusut di bawah min-content-nya, dan
+            judul album ber-truncate (white-space: nowrap) menyumbang lebar
+            teks penuh sehingga melebarkan halaman di layar sempit. */}
+        <section className="min-w-0 space-y-3 lg:col-span-4" aria-label="Daftar album">
           <h2 className="font-bold text-foreground">Daftar Album</h2>
+
           {albumsQuery.isLoading ? (
-            <p className="text-meta text-muted-foreground">Memuat album...</p>
-          ) : albumsQuery.data?.length === 0 ? (
-            <Card className="p-4 text-center text-meta text-muted-foreground">
-              Belum ada album. Klik &quot;Buat Album Baru&quot; di atas.
-            </Card>
+            <LoadingState label="Memuat album..." />
+          ) : albums.length === 0 ? (
+            <EmptyState
+              icon={Images}
+              title="Belum ada album"
+              description="Buat album pertama lewat tombol Buat Album Baru di atas."
+            />
           ) : (
-            <div className="space-y-2">
-              {albumsQuery.data?.map((album) => {
+            <ul className="space-y-2">
+              {albums.map((album) => {
+                const visibility = album.visibility as AlbumVisibility;
                 const isSelected = selectedAlbumId === album.id;
+                const VisibilityIcon = visibility === "private" ? Lock : Globe;
+
                 return (
-                  <Card
-                    key={album.id}
-                    className={`cursor-pointer p-3 transition-colors ${
-                      isSelected ? "border-primary bg-primary/5" : "hover:border-primary/50"
-                    }`}
-                    onClick={() => setSelectedAlbumId(album.id)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          {album.visibility === "private" ? (
-                            <Lock className="size-3.5 text-amber-600" aria-label="Privat" />
-                          ) : (
-                            <Globe className="size-3.5 text-primary" aria-label="Publik" />
-                          )}
-                          <h3 className="truncate font-bold text-foreground">{album.title}</h3>
-                        </div>
-                        <p className="mt-0.5 text-legal text-muted-foreground">
-                          {album.itemCount} media • {album.visibility === "private" ? "Privat (Secret Link)" : "Publik (Landing)"}
-                        </p>
+                  <li key={album.id}>
+                    <Card
+                      className={
+                        isSelected
+                          ? "overflow-hidden border-primary"
+                          : "overflow-hidden"
+                      }
+                    >
+                      {/* Kartu dipilih lewat tombol sungguhan supaya bisa
+                          dijangkau keyboard, dan tombol aksinya jadi
+                          bersaudara, bukan bersarang di dalamnya. */}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedAlbumId(album.id)}
+                        aria-pressed={isSelected}
+                        className="flex min-h-11 w-full items-start justify-between gap-2 p-3 text-left transition-colors duration-150 hover:bg-muted"
+                      >
+                        <span className="min-w-0 flex-1">
+                          {/* min-w-0 juga di baris ini, kalau tidak truncate
+                              pada judul tidak boleh menyusut dan judul panjang
+                              melebarkan seluruh halaman di layar sempit. */}
+                          <span className="flex min-w-0 items-center gap-1.5">
+                            <VisibilityIcon
+                              className={
+                                visibility === "private"
+                                  ? "size-3.5 shrink-0 text-warning"
+                                  : "size-3.5 shrink-0 text-primary"
+                              }
+                              aria-hidden="true"
+                            />
+                            <span className="truncate font-bold text-foreground">
+                              {album.title}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 block text-legal text-muted-foreground">
+                            {album.itemCount} media, {ALBUM_VISIBILITY_HINT[visibility]}
+                          </span>
+                        </span>
+
+                        <Badge tone={ALBUM_VISIBILITY_TONE[visibility]}>
+                          {ALBUM_VISIBILITY_LABEL[visibility]}
+                        </Badge>
+                      </button>
+
+                      <div className="flex items-center justify-between gap-2 border-t border-border px-1">
+                        <Button
+                          variant="ghost"
+                          onClick={() => void copyShareLink(album.slug)}
+                        >
+                          <Copy className="size-4" aria-hidden="true" />
+                          Salin Link
+                        </Button>
+
+                        <ConfirmDialog
+                          title={`Hapus album "${album.title}"?`}
+                          description="Seluruh foto, video, dan dokumen di dalam album ikut terhapus. Tautan yang sudah dibagikan ke pelanggan akan mati."
+                          confirmLabel="Hapus album"
+                          tone="danger"
+                          pending={deleteAlbumMut.isPending}
+                          onConfirm={() => deleteAlbumMut.mutate({ id: album.id })}
+                        >
+                          <Button
+                            variant="ghost"
+                            className="text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="size-4" aria-hidden="true" />
+                            Hapus
+                          </Button>
+                        </ConfirmDialog>
                       </div>
-                      <Badge tone={album.visibility === "private" ? "warning" : "forest"}>
-                        {album.visibility}
-                      </Badge>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-legal">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          copyShareLink(album.slug);
-                        }}
-                        className="flex items-center gap-1 text-primary hover:underline font-medium"
-                      >
-                        <Copy className="size-3" />
-                        {copiedSlug === album.slug ? "Tersalin!" : "Salin Link"}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (confirm(`Hapus album "${album.title}" beserta seluruh isinya?`)) {
-                            deleteAlbumMut.mutate({ id: album.id });
-                          }
-                        }}
-                        className="text-destructive hover:underline"
-                      >
-                        Hapus
-                      </button>
-                    </div>
-                  </Card>
+                    </Card>
+                  </li>
                 );
               })}
-            </div>
+            </ul>
           )}
-        </div>
+        </section>
 
         {/* Kolom Kanan: Detail Album yang Dipilih */}
-        <div className="space-y-4 lg:col-span-8">
+        <section className="min-w-0 space-y-4 lg:col-span-8" aria-label="Isi album">
           {!selectedAlbumId ? (
-            <Card className="p-8 text-center text-muted-foreground">
-              <ImageIcon className="mx-auto size-10 opacity-40" />
-              <p className="mt-2 font-medium">Pilih album di sebelah kiri untuk mengelola isinya.</p>
-            </Card>
+            <EmptyState
+              icon={ImageIcon}
+              title="Belum ada album yang dipilih"
+              description="Pilih salah satu album di daftar untuk melihat dan mengelola isinya."
+            />
           ) : albumDetailQuery.isLoading ? (
-            <p className="text-meta text-muted-foreground">Memuat isi album...</p>
-          ) : !albumDetailQuery.data ? (
-            <Card className="p-4 text-danger">Album tidak ditemukan.</Card>
+            <LoadingState label="Memuat isi album..." />
+          ) : !detail ? (
+            <EmptyState
+              icon={ImageIcon}
+              title="Album tidak ditemukan"
+              description="Album mungkin sudah dihapus. Pilih album lain dari daftar."
+            />
           ) : (
-            <div className="space-y-4">
+            <>
               <Card className="p-4 sm:p-6">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h2 className="text-title font-bold text-foreground">
-                        {albumDetailQuery.data.album.title}
+                        {detail.album.title}
                       </h2>
-                      <Badge tone={albumDetailQuery.data.album.visibility === "private" ? "warning" : "forest"}>
-                        {albumDetailQuery.data.album.visibility}
+                      <Badge
+                        tone={ALBUM_VISIBILITY_TONE[detail.album.visibility as AlbumVisibility]}
+                      >
+                        {ALBUM_VISIBILITY_LABEL[detail.album.visibility as AlbumVisibility]}
                       </Badge>
                     </div>
-                    {albumDetailQuery.data.album.description ? (
+
+                    {detail.album.description ? (
                       <p className="mt-1 text-meta text-muted-foreground">
-                        {albumDetailQuery.data.album.description}
+                        {detail.album.description}
                       </p>
                     ) : null}
-                    <div className="mt-2 flex flex-wrap gap-2 text-legal">
+
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                       <a
-                        href={`/album/${albumDetailQuery.data.album.slug}`}
+                        href={`/album/${detail.album.slug}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        className="inline-flex min-h-11 items-center gap-1 text-legal font-medium text-primary hover:underline"
                       >
-                        <ExternalLink className="size-3" />
-                        Buka Halaman Webpage
+                        <ExternalLink className="size-3.5" aria-hidden="true" />
+                        Buka halaman album
                       </a>
-                      {albumDetailQuery.data.album.gdriveUrl ? (
+                      {detail.album.gdriveUrl ? (
                         <a
-                          href={albumDetailQuery.data.album.gdriveUrl}
+                          href={detail.album.gdriveUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-muted-foreground hover:underline"
+                          className="inline-flex min-h-11 items-center gap-1 text-legal text-muted-foreground hover:underline"
                         >
-                          <ExternalLink className="size-3" />
-                          Link Folder Google Drive
+                          <ExternalLink className="size-3.5" aria-hidden="true" />
+                          Folder Google Drive
                         </a>
                       ) : null}
                     </div>
                   </div>
 
-                  <Button onClick={() => { resetItemForm(); setItemDialogOpen(true); }}>
+                  <Button
+                    variant="forest"
+                    className="sm:shrink-0"
+                    onClick={() => { resetItemForm(); setItemDialogOpen(true); }}
+                  >
                     <Plus className="size-4" aria-hidden="true" />
                     Tambah Media
                   </Button>
                 </div>
               </Card>
 
-              {/* Grid Items Media */}
               <div>
                 <h3 className="mb-3 font-bold text-foreground">
-                  Daftar Media ({albumDetailQuery.data.items.length})
+                  Daftar Media ({detail.items.length})
                 </h3>
 
-                {albumDetailQuery.data.items.length === 0 ? (
-                  <Card className="p-6 text-center text-meta text-muted-foreground">
-                    Album ini belum memiliki foto, video, atau file PDF. Klik &quot;Tambah Media&quot; untuk mengunggah.
-                  </Card>
+                {detail.items.length === 0 ? (
+                  <EmptyState
+                    icon={Images}
+                    title="Album ini masih kosong"
+                    description="Tekan Tambah Media untuk mengunggah foto, menempel tautan YouTube, atau melampirkan dokumen PDF."
+                  />
                 ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {albumDetailQuery.data.items.map((item) => (
-                      <Card key={item.id} className="overflow-hidden p-3 flex flex-col justify-between">
-                        <div>
-                          {item.itemType === "image" ? (
-                            <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-control)] bg-muted">
-                              <Image
-                                src={item.mediaUrl}
-                                alt={item.title || "Foto album"}
-                                fill
-                                className="object-cover"
-                              />
-                            </div>
-                          ) : item.itemType === "youtube" ? (
-                            <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius-control)] bg-slate-900 text-white">
-                              <Video className="size-8 text-red-500" />
-                            </div>
-                          ) : (
-                            <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius-control)] bg-emerald-50 text-emerald-800">
-                              <FileText className="size-8" />
-                            </div>
-                          )}
+                  <ul className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                    {detail.items.map((item) => {
+                      const type = item.itemType as AlbumItemType;
+                      return (
+                        <li key={item.id}>
+                          <Card className="flex h-full flex-col justify-between overflow-hidden p-3">
+                            <div>
+                              {type === "image" ? (
+                                <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-control)] bg-muted">
+                                  <Image
+                                    src={item.mediaUrl}
+                                    alt={item.title || "Foto album"}
+                                    fill
+                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                    className="object-cover"
+                                  />
+                                </div>
+                              ) : type === "youtube" ? (
+                                <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius-control)] bg-foreground text-background">
+                                  <Video className="size-8" aria-hidden="true" />
+                                </div>
+                              ) : type === "pdf" ? (
+                                <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius-control)] bg-success-soft text-success">
+                                  <FileText className="size-8" aria-hidden="true" />
+                                </div>
+                              ) : (
+                                <div className="flex aspect-[4/3] items-center justify-center rounded-[var(--radius-control)] bg-muted text-muted-foreground">
+                                  <Link2 className="size-8" aria-hidden="true" />
+                                </div>
+                              )}
 
-                          <h4 className="mt-2 font-bold text-meta line-clamp-1">
-                            {item.title || "Tanpa Judul"}
-                          </h4>
-                          {item.description ? (
-                            <p className="text-legal text-muted-foreground line-clamp-2">
-                              {item.description}
-                            </p>
-                          ) : null}
-                        </div>
+                              <h4 className="mt-2 line-clamp-1 text-meta font-bold">
+                                {item.title || "Tanpa judul"}
+                              </h4>
+                              {item.description ? (
+                                <p className="line-clamp-2 text-legal text-muted-foreground">
+                                  {item.description}
+                                </p>
+                              ) : null}
+                            </div>
 
-                        <div className="mt-3 flex items-center justify-between border-t border-border pt-2 text-legal">
-                          <Badge tone="neutral">{item.itemType}</Badge>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (confirm("Hapus media ini?")) {
-                                deleteItemMut.mutate({ id: item.id });
-                              }
-                            }}
-                            className="text-destructive hover:underline flex items-center gap-1"
-                          >
-                            <Trash2 className="size-3" />
-                            Hapus
-                          </button>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-1">
+                              <Badge tone="neutral">
+                                {ALBUM_ITEM_TYPE_LABEL[type] ?? item.itemType}
+                              </Badge>
+
+                              <ConfirmDialog
+                                title="Hapus media ini dari album?"
+                                description={`"${item.title || "Media tanpa judul"}" akan hilang dari halaman album dan tidak bisa dikembalikan.`}
+                                confirmLabel="Hapus media"
+                                tone="danger"
+                                pending={deleteItemMut.isPending}
+                                onConfirm={() => deleteItemMut.mutate({ id: item.id })}
+                              >
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:bg-destructive/10"
+                                  aria-label={`Hapus media ${item.title || "tanpa judul"}`}
+                                >
+                                  <Trash2 className="size-4" aria-hidden="true" />
+                                </Button>
+                              </ConfirmDialog>
+                            </div>
+                          </Card>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
-            </div>
+            </>
           )}
-        </div>
+        </section>
       </div>
 
       {/* Dialog Buat Album */}
@@ -396,10 +481,11 @@ export function GalleryManagerClient() {
         <DialogContent>
           <DialogTitle>Buat Album Baru</DialogTitle>
           <DialogDescription>
-            Album bisa diset &apos;publik&apos; (tampil di landing page) atau &apos;privat&apos; (akses via link rahasia untuk pelanggan/keluarga).
+            Album publik tampil di landing page. Album privat hanya bisa dibuka
+            lewat link rahasia yang kamu bagikan sendiri ke pelanggan.
           </DialogDescription>
 
-          {errorMsg ? <Alert tone="danger" className="mt-2">{errorMsg}</Alert> : null}
+          {errorMsg ? <Alert tone="danger" className="mt-3">{errorMsg}</Alert> : null}
 
           <form onSubmit={handleCreateAlbum} className="mt-4 space-y-4">
             <Field id="album-title" label="Judul Album" required>
@@ -417,23 +503,26 @@ export function GalleryManagerClient() {
                 id="album-desc"
                 value={albumDesc}
                 onChange={(e) => setAlbumDesc(e.target.value)}
-                placeholder="Deskripsi singkat mengenai album foto/kegiatan ini"
+                placeholder="Deskripsi singkat mengenai album foto atau kegiatan ini"
               />
             </Field>
 
-            <Field id="album-vis" label="Aksesibilitas (Visibility)">
-              <select
+            <Field id="album-vis" label="Aksesibilitas">
+              <Select
                 id="album-vis"
                 value={albumVisibility}
-                onChange={(e) => setAlbumVisibility(e.target.value as "public" | "private")}
-                className="w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-meta"
+                onChange={(e) => setAlbumVisibility(e.target.value as AlbumVisibility)}
               >
-                <option value="public">Publik (Muncul di landing page & galeri umum)</option>
-                <option value="private">Privat (Hanya bisa dibuka dengan Link Rahasia / Secret URL)</option>
-              </select>
+                <option value="public">{ALBUM_VISIBILITY_HINT.public}</option>
+                <option value="private">{ALBUM_VISIBILITY_HINT.private}</option>
+              </Select>
             </Field>
 
-            <Field id="album-gdrive" label="Link Folder Google Drive Full Album (Opsional)">
+            <Field
+              id="album-gdrive"
+              label="Link Folder Google Drive"
+              hint="Opsional. Dipakai sebagai tombol unduh album lengkap."
+            >
               <Input
                 id="album-gdrive"
                 type="url"
@@ -443,19 +532,27 @@ export function GalleryManagerClient() {
               />
             </Field>
 
-            <Field id="album-cover" label="Unggah Cover Album (Kompresi Otomatis)">
-              <div className="flex items-center gap-3">
-                <input
-                  id="album-cover"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => void handleFileUpload(e, "cover")}
-                  className="text-meta"
-                />
-                {uploading ? <p className="text-legal text-muted-foreground">Mengunggah & mengompres...</p> : null}
-              </div>
+            <Field
+              id="album-cover"
+              label="Cover Album"
+              hint="Gambar dikompres otomatis setelah diunggah."
+            >
+              <input
+                id="album-cover"
+                type="file"
+                accept="image/*"
+                onChange={(e) => void handleFileUpload(e, "cover")}
+                className="w-full text-meta file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-[var(--radius-control)] file:border file:border-border file:bg-surface file:px-4 file:text-meta file:font-medium file:text-foreground hover:file:bg-muted"
+              />
+              {uploading ? (
+                <p role="status" className="text-legal text-muted-foreground">
+                  Mengunggah dan mengompres...
+                </p>
+              ) : null}
               {albumCoverUrl ? (
-                <p className="mt-1 text-legal font-medium text-primary">Cover terunggah: {albumCoverUrl}</p>
+                <p className="line-clamp-1 text-legal font-medium text-primary">
+                  Cover terunggah: {albumCoverUrl}
+                </p>
               ) : null}
             </Field>
 
@@ -476,27 +573,31 @@ export function GalleryManagerClient() {
         <DialogContent>
           <DialogTitle>Tambah Media Ke Album</DialogTitle>
           <DialogDescription>
-            Tambahkan foto (dikompres otomatis), video YouTube, dokumen PDF, atau link Google Drive.
+            Tambahkan foto (dikompres otomatis), video YouTube, dokumen PDF,
+            atau tautan Google Drive.
           </DialogDescription>
 
-          {errorMsg ? <Alert tone="danger" className="mt-2">{errorMsg}</Alert> : null}
+          {errorMsg ? <Alert tone="danger" className="mt-3">{errorMsg}</Alert> : null}
 
           <form onSubmit={handleCreateItem} className="mt-4 space-y-4">
             <Field id="item-type" label="Tipe Media">
-              <select
+              <Select
                 id="item-type"
                 value={itemType}
-                onChange={(e) => setItemType(e.target.value as "image" | "youtube" | "pdf" | "gdrive_link")}
-                className="w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-meta"
+                onChange={(e) => {
+                  setItemType(e.target.value as AlbumItemType);
+                  setItemMediaUrl("");
+                }}
               >
-                <option value="image">Foto (Unggah & Kompres Server-side)</option>
-                <option value="youtube">Video YouTube (Embed Link)</option>
-                <option value="pdf">Dokumen PDF (Unggah File)</option>
-                <option value="gdrive_link">Link File / Folder Google Drive</option>
-              </select>
+                {ALBUM_ITEM_TYPE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
 
-            <Field id="item-title" label="Judul / Keterangan Media (Opsional)">
+            <Field id="item-title" label="Judul / Keterangan Media">
               <Input
                 id="item-title"
                 value={itemTitle}
@@ -506,36 +607,52 @@ export function GalleryManagerClient() {
             </Field>
 
             {itemType === "image" || itemType === "pdf" ? (
-              <Field id="item-file" label={`Unggah File ${itemType === "image" ? "Foto" : "PDF"}`} required>
+              <Field
+                id="item-file"
+                label={`Unggah File ${itemType === "image" ? "Foto" : "PDF"}`}
+                required
+              >
                 <input
                   id="item-file"
                   type="file"
                   accept={itemType === "image" ? "image/*" : "application/pdf"}
                   onChange={(e) => void handleFileUpload(e, "item")}
-                  className="text-meta"
                   required={!itemMediaUrl}
+                  className="w-full text-meta file:mr-3 file:min-h-11 file:cursor-pointer file:rounded-[var(--radius-control)] file:border file:border-border file:bg-surface file:px-4 file:text-meta file:font-medium file:text-foreground hover:file:bg-muted"
                 />
-                {uploading ? <p className="text-legal text-muted-foreground mt-1">Proses unggah & kompresi...</p> : null}
+                {uploading ? (
+                  <p role="status" className="text-legal text-muted-foreground">
+                    Proses unggah dan kompresi...
+                  </p>
+                ) : null}
                 {itemMediaUrl ? (
-                  <p className="mt-1 text-legal font-medium text-primary line-clamp-1">
+                  <p className="line-clamp-1 text-legal font-medium text-primary">
                     Terunggah: {itemMediaUrl}
                   </p>
                 ) : null}
               </Field>
             ) : (
-              <Field id="item-url" label={itemType === "youtube" ? "URL Video YouTube" : "URL Google Drive"} required>
+              <Field
+                id="item-url"
+                label={itemType === "youtube" ? "URL Video YouTube" : "URL Google Drive"}
+                required
+              >
                 <Input
                   id="item-url"
                   type="url"
                   value={itemMediaUrl}
                   onChange={(e) => setItemMediaUrl(e.target.value)}
-                  placeholder={itemType === "youtube" ? "https://www.youtube.com/watch?v=..." : "https://drive.google.com/file/d/..."}
+                  placeholder={
+                    itemType === "youtube"
+                      ? "https://www.youtube.com/watch?v=..."
+                      : "https://drive.google.com/file/d/..."
+                  }
                   required
                 />
               </Field>
             )}
 
-            <Field id="item-desc" label="Deskripsi Tambahan (Opsional)">
+            <Field id="item-desc" label="Deskripsi Tambahan">
               <Textarea
                 id="item-desc"
                 value={itemDesc}
@@ -555,6 +672,6 @@ export function GalleryManagerClient() {
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminPage>
   );
 }

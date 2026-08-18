@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CircleDollarSign,
   Database,
+  Inbox,
   Loader2,
   MessageCircle,
   RefreshCw,
@@ -11,11 +12,17 @@ import {
   Users,
 } from "lucide-react";
 
+import { AdminPage } from "@/components/admin/admin-page";
 import { AssignJeepDialog } from "@/components/admin/assign-jeep-dialog";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DetailList } from "@/components/ui/detail-list";
+import { EmptyState } from "@/components/ui/empty-state";
+import { LoadingState } from "@/components/ui/loading-state";
+import { useToast } from "@/components/ui/toast";
 import { formatIDR, formatJam, formatTanggal, waMeLink } from "@/lib/utils";
 import { api } from "@/trpc/client";
 
@@ -41,9 +48,14 @@ function SummaryCards() {
   ];
 
   return (
-    <div className="grid grid-cols-3 gap-3">
-      {items.map(({ label, value, icon: Icon }) => (
-        <Card key={label} className="p-4">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      {items.map(({ label, value, icon: Icon }, index) => (
+        <Card
+          key={label}
+          /* Kartu ketiga melebar penuh di layar sempit supaya nilai rupiah
+             pada kartu kedua tidak terpotong di lebar 360px. */
+          className={index === 2 ? "col-span-2 p-4 sm:col-span-1" : "p-4"}
+        >
           <Icon className="size-5 text-primary" aria-hidden="true" />
           <p className="mt-3 text-legal text-muted-foreground">{label}</p>
           <p className="tabular mt-0.5 font-bold leading-tight">{value}</p>
@@ -59,27 +71,17 @@ function SummaryCards() {
  */
 function SyncDbCard() {
   const syncAvailability = api.admin.getSyncAvailability.useQuery();
-  const syncMutation = api.admin.syncFromMainDb.useMutation();
   const utils = api.useUtils();
+  const { toast } = useToast();
 
-  function handleSync() {
-    if (
-      window.confirm(
-        "Sinkronisasi akan menimpa data dev dengan data terbaru dari produksi. Lanjutkan?",
-      )
-    ) {
-      syncMutation.mutate(undefined, {
-        onSuccess: () => {
-          void utils.admin.getSummary.invalidate();
-          void utils.admin.getPendingOrders.invalidate();
-          alert("Sinkronisasi selesai!");
-        },
-        onError: (error) => {
-          alert("Gagal sinkronisasi: " + error.message);
-        },
-      });
-    }
-  }
+  const syncMutation = api.admin.syncFromMainDb.useMutation({
+    onSuccess: () => {
+      void utils.admin.getSummary.invalidate();
+      void utils.admin.getPendingOrders.invalidate();
+      toast("Data dev sudah disamakan dengan produksi.");
+    },
+    onError: (error) => toast(`Gagal sinkronisasi: ${error.message}`, "danger"),
+  });
 
   if (!syncAvailability.data?.available) {
     return null; // Sembunyikan bila tidak tersedia
@@ -89,7 +91,7 @@ function SyncDbCard() {
     <Card className="p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
-          <Database className="size-5 text-primary" aria-hidden="true" />
+          <Database className="size-5 shrink-0 text-primary" aria-hidden="true" />
           <div>
             <p className="font-semibold">Sinkronisasi Database Dev</p>
             <p className="text-meta text-muted-foreground">
@@ -97,19 +99,24 @@ function SyncDbCard() {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          onClick={handleSync}
-          disabled={syncMutation.isPending}
-          className="flex-shrink-0"
+
+        <ConfirmDialog
+          title="Timpa data dev dengan data produksi?"
+          description="Seluruh paket, armada, dan titik kumpul di database dev akan diganti dengan versi produksi. Data dev yang sekarang hilang dan tidak bisa dikembalikan."
+          confirmLabel="Sinkronkan sekarang"
+          tone="danger"
+          pending={syncMutation.isPending}
+          onConfirm={() => syncMutation.mutate()}
         >
-          {syncMutation.isPending ? (
-            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          ) : (
-            <RefreshCw className="size-4" aria-hidden="true" />
-          )}
-          {syncMutation.isPending ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
-        </Button>
+          <Button variant="outline" disabled={syncMutation.isPending} className="sm:shrink-0">
+            {syncMutation.isPending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <RefreshCw className="size-4" aria-hidden="true" />
+            )}
+            {syncMutation.isPending ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
+          </Button>
+        </ConfirmDialog>
       </div>
     </Card>
   );
@@ -131,35 +138,26 @@ export function DashboardClient() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-section">Pesanan masuk</h1>
-        <p className="mt-1 text-meta text-muted-foreground">
-          Daftar di bawah sudah lunas dan menunggu dialokasikan Jeep.
-        </p>
-      </div>
-
+    <AdminPage
+      title="Pesanan masuk"
+      description="Daftar di bawah sudah lunas dan menunggu dialokasikan Jeep."
+    >
       <SummaryCards />
 
       <SyncDbCard />
 
       {orders.isLoading ? (
-        <p className="flex items-center gap-2 py-8 text-meta text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
-          Memuat pesanan...
-        </p>
+        <LoadingState label="Memuat pesanan..." />
       ) : orders.isError ? (
         <Alert tone="danger" title="Data gagal dimuat">
           {orders.error.message}
         </Alert>
       ) : rows.length === 0 ? (
-        <Card className="p-8 text-center">
-          <p className="font-semibold">Belum ada pesanan yang perlu diproses</p>
-          <p className="mt-2 text-meta text-muted-foreground">
-            Semua pesanan lunas sudah dapat Jeep. Notifikasi WhatsApp akan
-            masuk begitu ada pesanan baru.
-          </p>
-        </Card>
+        <EmptyState
+          icon={Inbox}
+          title="Belum ada pesanan yang perlu diproses"
+          description="Semua pesanan lunas sudah dapat Jeep. Notifikasi WhatsApp akan masuk begitu ada pesanan baru."
+        />
       ) : (
         <ul className="space-y-4">
           {rows.map(({ booking, packageName }, index) => (
@@ -183,33 +181,23 @@ export function DashboardClient() {
                   </p>
                 </div>
 
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-meta">
-                  <div>
-                    <dt className="text-muted-foreground">Tanggal</dt>
-                    <dd className="font-medium">
-                      {formatTanggal(booking.bookingDate)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Jam</dt>
-                    <dd className="font-medium">
-                      {formatJam(booking.timeSlot)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Pemesan</dt>
-                    <dd className="font-medium">{booking.contactName}</dd>
-                  </div>
-                  <div>
-                    <dt className="flex items-center gap-1 text-muted-foreground">
-                      <Users className="size-3.5" aria-hidden="true" />
-                      Peserta
-                    </dt>
-                    <dd className="tabular font-medium">
-                      {booking.paxCount} orang
-                    </dd>
-                  </div>
-                </dl>
+                <DetailList
+                  className="mt-4"
+                  items={[
+                    {
+                      label: "Tanggal",
+                      value: formatTanggal(booking.bookingDate),
+                    },
+                    { label: "Jam", value: formatJam(booking.timeSlot) },
+                    { label: "Pemesan", value: booking.contactName },
+                    {
+                      label: "Peserta",
+                      value: `${booking.paxCount} orang`,
+                      icon: Users,
+                      tabular: true,
+                    },
+                  ]}
+                />
 
                 {booking.specialRequests ? (
                   <p className="mt-4 rounded-[var(--radius-control)] bg-muted p-3 text-meta">
@@ -228,7 +216,7 @@ export function DashboardClient() {
                     onAssigned={refreshAll}
                   />
 
-                  <Button variant="outline" asChild className="flex-1">
+                  <Button variant="outline" asChild className="w-full sm:flex-1">
                     <a
                       href={waMeLink(
                         booking.contactPhone,
@@ -247,6 +235,6 @@ export function DashboardClient() {
           ))}
         </ul>
       )}
-    </div>
+    </AdminPage>
   );
 }

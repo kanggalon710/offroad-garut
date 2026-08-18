@@ -67,7 +67,7 @@ export function AssignJeepDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button variant="forest" className="flex-1">
+        <Button variant="forest" className="w-full sm:flex-1">
           <Car className="size-4" aria-hidden="true" />
           Alokasikan Jeep
         </Button>
@@ -117,7 +117,7 @@ export function AssignJeepDialog({
                       value={jeep.id}
                       checked={active}
                       onChange={() => setSelectedJeep(jeep.id)}
-                      className="size-5 accent-[#166534]"
+                      className="size-5 accent-primary"
                     />
                     <span>
                       <span className="block font-semibold">{jeep.name}</span>

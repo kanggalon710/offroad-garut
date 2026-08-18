@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { AdminHeader } from "@/components/admin/admin-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ToastProvider } from "@/components/ui/toast";
 import { auth } from "@/lib/auth";
 
 /**
@@ -52,11 +53,14 @@ export default async function AdminLayout({
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-background">
-      <AdminHeader name={session.user.name ?? "Pengelola"} />
-      <main id="konten" className="mx-auto w-full max-w-4xl flex-1 px-4 py-8 sm:px-6">
-        {children}
-      </main>
-    </div>
+    <ToastProvider>
+      <div className="flex min-h-dvh flex-col bg-background">
+        <AdminHeader name={session.user.name ?? "Pengelola"} />
+        {/* Lebar akhir ditentukan tiap layar lewat prop width di AdminPage. */}
+        <main id="konten" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+          {children}
+        </main>
+      </div>
+    </ToastProvider>
   );
 }

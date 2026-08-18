@@ -4,7 +4,9 @@ import type { ComponentProps } from "react";
 import { cn } from "@/lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-legal font-semibold",
+  // whitespace-nowrap: teks yang membungkus merusak bentuk pil-nya.
+  // Lencana memang untuk label pendek, jadi induknya yang harus flex-wrap.
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-legal font-semibold",
   {
     variants: {
       tone: {
@@ -19,6 +21,9 @@ const badgeVariants = cva(
     defaultVariants: { tone: "neutral" },
   },
 );
+
+/** Dipakai peta status di src/lib/constants.ts supaya tone tidak jadi string longgar. */
+export type BadgeTone = NonNullable<VariantProps<typeof badgeVariants>["tone"]>;
 
 type BadgeProps = ComponentProps<"span"> & VariantProps<typeof badgeVariants>;
 

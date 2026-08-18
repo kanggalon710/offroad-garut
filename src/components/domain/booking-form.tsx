@@ -20,6 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Select } from "@/components/ui/select";
 import { TIME_SLOTS } from "@/lib/constants";
 import { cn, formatTanggal, normalizePhone } from "@/lib/utils";
 import { api } from "@/trpc/client";
@@ -179,7 +180,7 @@ export function BookingForm({
           <h2 className="text-title font-bold">Detail perjalanan</h2>
 
           <Field id="paket" label="Paket" required>
-            <select
+            <Select
               id="paket"
               value={packageId}
               onChange={(event) => {
@@ -189,14 +190,13 @@ export function BookingForm({
                 );
                 if (next && paxCount < next.minPax) setPaxCount(next.minPax);
               }}
-              className="h-12 w-full rounded-[var(--radius-control)] border border-border bg-surface px-4 text-base"
             >
               {packages.map((pkg) => (
                 <option key={pkg.id} value={pkg.id}>
                   {pkg.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
 
           <Field
@@ -288,18 +288,17 @@ export function BookingForm({
           />
 
           <Field id="titik-kumpul" label="Titik kumpul" required>
-            <select
+            <Select
               id="titik-kumpul"
               value={meetingPointId}
               onChange={(event) => setMeetingPointId(event.target.value)}
-              className="h-12 w-full rounded-[var(--radius-control)] border border-border bg-surface px-4 text-base"
             >
               {meetingPoints.map((point) => (
                 <option key={point.id} value={point.id}>
                   {point.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </Field>
         </Card>
 

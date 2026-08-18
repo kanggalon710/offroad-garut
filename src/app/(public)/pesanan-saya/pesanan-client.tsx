@@ -7,20 +7,9 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { BOOKING_STATUS_LABEL, BOOKING_STATUS_TONE } from "@/lib/constants";
 import { cn, formatIDR } from "@/lib/utils";
 import { api } from "@/trpc/client";
-
-const STATUS_TONE: Record<
-  string,
-  { tone: "success" | "warning" | "danger" | "neutral"; label: string }
-> = {
-  pending: { tone: "neutral", label: "Menunggu Info" },
-  awaiting_payment: { tone: "warning", label: "Menunggu Pembayaran" },
-  paid: { tone: "success", label: "Lunas (Menunggu Jeep)" },
-  confirmed: { tone: "success", label: "Dikonfirmasi" },
-  completed: { tone: "neutral", label: "Selesai" },
-  cancelled: { tone: "danger", label: "Dibatalkan" },
-};
 
 type Tab = "aktif" | "selesai" | "batal";
 
@@ -153,9 +142,9 @@ export function PesananSayaClient() {
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
           {filtered.map(({ booking, packageName }) => {
-            const status = STATUS_TONE[booking.status] ?? {
-              tone: "neutral" as const,
-              label: booking.status,
+            const status = {
+              tone: BOOKING_STATUS_TONE[booking.status] ?? ("neutral" as const),
+              label: BOOKING_STATUS_LABEL[booking.status] ?? booking.status,
             };
             const dateLabel = new Date(booking.bookingDate).toLocaleDateString(
               "id-ID",

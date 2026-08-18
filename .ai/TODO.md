@@ -42,23 +42,61 @@ pemilik project.
       tiket dan di webhook Midtrans.
       **Rencana:** satu sumber di `src/lib/constants.ts`, sisanya menurunkan tipenya dari
       situ.
+      **2026-08-19:** separuh selesai. Peta tone disatukan jadi `BOOKING_STATUS_TONE` di
+      `constants.ts` dan dipakai admin maupun halaman "Pesanan saya". Enum Zod di router,
+      union TS di `schema.ts`, dan `StatusFilter` di `orders-client.tsx` masih terpisah.
 
-- [ ] **Blok detail booking diulang di tiga file.** Grid `<dl>` berisi Tanggal, Jam,
+- [x] 2026-08-19 **Blok detail booking diulang di tiga file.** Diekstrak jadi
+      `DetailList` di `src/components/ui/detail-list.tsx` dan dipakai di
+      `dashboard-client.tsx` serta `orders-client.tsx`. Halaman tiket belum ikut,
+      tercatat sebagai sisa di bawah.
+      **Catatan awal:** Grid `<dl>` berisi Tanggal, Jam,
       Pemesan, Peserta, dan Total muncul dengan markup hampir identik di
       `dashboard-client.tsx`, `orders-client.tsx`, dan halaman tiket. Header kartunya juga
       kembar di dua file pertama.
       **Rencana:** ekstrak `BookingSummaryCard` atau minimal `DetailRow`. Sekitar 60 baris
       duplikat hilang.
 
-- [ ] **Triad loading, error, dan empty identik di dua file admin.** Ditambah pola spinner
-      dengan label yang berulang di tujuh tempat.
-      **Rencana:** ekstrak pembungkus state query dan komponen spinner.
+- [x] 2026-08-19 **Triad loading, error, dan empty identik di dua file admin.** Diekstrak
+      jadi `LoadingState` dan `EmptyState` di `src/components/ui/`, dipakai di seluruh
+      lima layar pengelola. Pembungkus state query generik sengaja tidak dibuat: ia
+      menyembunyikan alur kendali dan tipenya jadi rumit di atas hasil query tRPC.
 
 - [ ] **Dua halaman admin cuma cangkang.** `dashboard/page.tsx` dan `orders/page.tsx`
       masing-masing 12 baris yang tidak merender apa-apa selain client component 180-an
       baris. Semua heading, kartu ringkasan, dan empty state dirender di client.
       **Rencana:** ambil data di server seperti yang sudah dilakukan sisi publik, sisakan
       tombol mutasi saja sebagai client.
+      **2026-08-19:** sengaja TIDAK dikerjakan bersama perombakan UI/UX pengelola. Ini
+      perubahan arsitektur data, bukan tampilan, dan menyentuh prefetch tRPC serta seluruh
+      alur mutasi di kedua halaman. Dipisah supaya diff-nya bisa direview sendiri.
+
+## Sisa dari perombakan UI/UX pengelola (2026-08-19)
+
+- [ ] **Halaman tiket belum memakai `DetailList`.** `dashboard-client.tsx` dan
+      `orders-client.tsx` sudah, tapi halaman tiket publik masih menulis grid `<dl>` nya
+      sendiri. Ini yang tersisa dari butir "blok detail booking diulang di tiga file".
+
+- [ ] **`album-view-client.tsx` melanggar design token.** Memakai `shadow-xs`,
+      `hover:shadow-md`, `text-slate-300`, `bg-white/10`, `border-white/20`, dan
+      `shadow-lg` yang bukan skala bayangan project. Tombol "Download Full Album HD
+      (Google Drive)" juga membuat halaman `/album/[slug]` scroll horizontal 2px di 360px
+      karena labelnya terlalu panjang untuk dibungkus. Sudah ada sebelum perombakan
+      pengelola dan sengaja dibiarkan karena halaman publik di luar cakupan.
+      **Rencana:** pendekkan label jadi "Unduh album lengkap", ganti warna hardcoded ke
+      token, dan samakan bayangannya ke `--shadow-card` / `--shadow-raised`.
+
+- [ ] **Navbar publik punya target sentuh di bawah 44px.** Tautan "Offroad Garut",
+      "Paket", "Titik Kumpul", tombol "Menu pengguna" (40px), dan nomor WhatsApp di footer
+      semuanya lebih pendek dari 44px di semua lebar layar. Terukur di peramban, bukan
+      dugaan.
+
+- [ ] **Landing page punya dua `h1` di 360px dan 1280px, dan nol `h1` di 768px.**
+      Kemungkinan judul hero dan judul seksi memakai level yang sama, atau ada yang
+      disembunyikan per breakpoint. Satu halaman harus punya tepat satu `h1`.
+
+- [ ] **`react-hook-form` dan `@hookform/resolvers` terpasang tapi tidak pernah dipakai.**
+      Semua form masih `useState` manual. Entah dipakai, entah dicopot dari dependensi.
 
 ## Prioritas rendah
 
