@@ -117,6 +117,9 @@ export function PembaruanClient() {
   const job = data.job;
   const berjalan = data.sedangBerjalan || (job !== null && !sudahSelesai(job.keadaan));
   const adaPembaruan = (versi?.tertinggal ?? 0) > 0;
+  // Server tidak meng-compile sendiri, jadi commit yang hasil buildnya belum
+  // selesai dibuat GitHub Actions belum bisa dipasang.
+  const menungguBuild = adaPembaruan && versi !== null && !versi.buildSiap;
 
   return (
     <AdminPage
@@ -173,9 +176,22 @@ export function PembaruanClient() {
             </div>
           ) : null}
 
+          {menungguBuild ? (
+            <Alert
+              tone="warning"
+              title="Menunggu GitHub selesai membangun"
+              className="mt-5"
+            >
+              Kode terbarunya sudah ada, tapi hasil buildnya belum siap. Aplikasi
+              tidak dibangun di server, jadi tombol pembaruan baru terbuka setelah
+              GitHub Actions selesai. Biasanya beberapa menit. Muat ulang halaman
+              ini untuk memeriksa lagi.
+            </Alert>
+          ) : null}
+
           <CardActions>
             <DialogPin
-              disabled={!adaPembaruan || berjalan || terapkan.isPending}
+              disabled={!adaPembaruan || menungguBuild || berjalan || terapkan.isPending}
               pending={terapkan.isPending}
               jumlah={versi.tertinggal}
               onTerapkan={(pin) => terapkan.mutate({ pin })}

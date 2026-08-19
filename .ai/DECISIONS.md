@@ -213,3 +213,34 @@ tetap tersedia tanpa menambah dependensi.
 
 **Preseden:** memilih faktor kedua yang cocok dengan cara pemakainya bekerja, dan setiap
 rahasia pendek wajib datang bersama penguncian percobaan.
+
+## 2026-08-19 - Build di GitHub Actions, dikirim lewat branch hasil build
+
+**Konteks:** `next build` di cPanel selalu mati dengan `WebAssembly.instantiate(): Out of
+memory`. Dengan `ulimit -v 4194304` yang sama persis, build ini gagal juga di mesin
+pengembang, dalam tiga konfigurasi NODE_OPTIONS. Jadi 4 GB ruang alamat memang tidak
+cukup, dan tidak ada flag yang bisa mengakalinya.
+
+**Opsi:** (a) terus mencari kombinasi flag, (b) build di laptop lalu unggah manual,
+(c) build di GitHub Actions dan kirim hasilnya lewat branch khusus, (d) build di CI lalu
+ambil lewat GitHub Releases dengan token, (e) repositori terpisah khusus artefak.
+
+**Pilihan:** (c). `.github/workflows/build.yml` mendorong commit yatim ke `build-main` dan
+`build-dev`.
+
+**Alasan:** (a) sudah terbukti buntu lewat reproduksi terkontrol. (b) berfungsi sebagai
+prosedur darurat dan memang sempat dipakai untuk memulihkan produksi, tapi menggantungkan
+rilis pada satu mesin dan satu orang. Antara (c), (d), dan (e), pilihan (c) memakai ulang
+SSH deploy key yang sudah dipasang untuk repo private, jadi tidak menambah rahasia baru
+yang harus dirawat di `.env.production`, dan tidak menambah repositori kedua yang harus
+diberi izin sendiri. Commit yatim yang di-force push menjaga ukuran repositori tetap
+wajar karena branch itu hanya pernah punya satu commit.
+
+**Konsekuensi:** rilis jadi dua tahap, dan ada jeda antara kode masuk `main` dengan hasil
+buildnya siap. Karena itu halaman `/pembaruan` harus bisa membedakan "ada versi baru" dari
+"versi baru sudah bisa dipasang", dan `BUILD-INFO.json` menyimpan SHA sumber supaya server
+menolak build yang tidak sepasang. Nilai `NEXT_PUBLIC_*` sekarang jadi tanggung jawab CI,
+bukan server, jadi setiap lingkungan butuh set nilainya sendiri di GitHub.
+
+**Preseden:** shared hosting adalah tempat menjalankan, bukan tempat membangun. Aturan ini
+dinaikkan ke standar global bagian 14.

@@ -33,15 +33,36 @@ npm ci --omit=dev --include=optional
 
 if [ ! -d node_modules/@next/swc-linux-x64-gnu ]; then
   echo "PERINGATAN: @next/swc-linux-x64-gnu tidak terpasang."
-  echo "Next akan memakai SWC WebAssembly dan build kemungkinan besar kehabisan memori."
-  echo "Coba: npm install --include=optional @next/swc-linux-x64-gnu@\$(node -p \"require('next/package.json').version\")"
+  echo "Next akan memakai SWC WebAssembly dan aplikasi bisa gagal saat runtime."
 fi
 
-# cPanel shared hosting RLIMIT_AS ketat. Heap 1024 terlalu besar, SWC Wasm
-# kena OOM. Turunkan heap dan batasi semi-space.
-export NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64"
-export NEXT_TELEMETRY_DISABLED=1
-npx next build
+# Server TIDAK meng-compile. Ruang alamat cPanel sekitar 4 GB, sedangkan
+# binding SWC saja 137 MB dan build worker berjalan di atasnya. Hasil build
+# dibuat GitHub Actions dan didorong ke branch build-<branch>.
+BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+BRANCH_BUILD="build-$BRANCH"
+
+git fetch origin "+refs/heads/$BRANCH_BUILD:refs/remotes/origin/$BRANCH_BUILD" --force
+
+SUMBER_SHA="$(git rev-parse HEAD)"
+BUILD_SHA="$(git show "origin/$BRANCH_BUILD:BUILD-INFO.json" | grep -o '"sumberSha"[^,]*' | cut -d'"' -f4)"
+
+if [ "$SUMBER_SHA" != "$BUILD_SHA" ]; then
+  echo "GAGAL: hasil build di $BRANCH_BUILD untuk commit ${BUILD_SHA:0:7},"
+  echo "sedangkan kode di server ${SUMBER_SHA:0:7}. Tunggu GitHub Actions selesai."
+  exit 1
+fi
+
+rm -rf "$AKAR/tmp/build-baru" && mkdir -p "$AKAR/tmp/build-baru"
+git archive --format=tar -o "$AKAR/tmp/build.tar" "origin/$BRANCH_BUILD"
+tar -xf "$AKAR/tmp/build.tar" -C "$AKAR/tmp/build-baru"
+rm -f "$AKAR/tmp/build.tar"
+
+# Simpan hasil build lama supaya pemulihan tidak butuh jaringan.
+rm -rf "$AKAR/.next-sebelumnya"
+[ -d "$AKAR/.next" ] && mv "$AKAR/.next" "$AKAR/.next-sebelumnya"
+mv "$AKAR/tmp/build-baru/.next" "$AKAR/.next"
+rm -rf "$AKAR/tmp/build-baru"
 
 # Penanda restart Passenger, relatif ke aplikasi ini saja.
 mkdir -p "$AKAR/tmp"

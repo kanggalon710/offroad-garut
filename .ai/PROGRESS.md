@@ -1,3 +1,17 @@
+## 2026-08-19 - Build pindah ke GitHub Actions lewat branch hasil build
+**Agen:** claude | **Status:** selesai
+**Kenapa:** `next build` di cPanel selalu mati dengan `WebAssembly.instantiate(): Out of memory`. Dibuktikan bukan soal tuning: dengan `ulimit -v 4194304` yang persis sama dengan server, build ini gagal juga di mesin pengembang dalam tiga konfigurasi NODE_OPTIONS (dengan `--max-semi-space-size=64`, tanpa itu, dan tanpa NODE_OPTIONS sama sekali). Ruang alamat 4 GB tidak cukup: binding SWC saja 137 MB dan build worker berjalan di atasnya. Pesan WebAssembly itu menyesatkan, karena `next/dist/build/swc/index.js:282-298` diam-diam jatuh ke SWC WebAssembly saat native gagal dimuat, tanpa mencetak peringatan apa pun.
+**Perubahan:**
+- `.github/workflows/build.yml`: setiap push ke `main` dan `dev` menjalankan typecheck, lint, tes logika, lalu build, dan mendorong hasilnya sebagai commit yatim yang di-force push ke `build-main` / `build-dev`. Branch itu selalu berisi tepat satu commit, jadi repositori tidak bertambah sebesar satu build tiap rilis.
+- Nilai `NEXT_PUBLIC_*` ditanam di CI per lingkungan, bukan di server. Ada langkah yang menggagalkan build kalau `localhost` sampai ikut tertanam di bundel, karena kesalahan itu terlihat seperti deploy rusak alih-alih variabel yang salah.
+- `BUILD-INFO.json` mencatat SHA sumbernya, dan server menolak memasang build yang tidak sepasang dengan kode yang akan di-checkout. Ini penjaga terpenting: build yang diam-diam berpasangan dengan sumber yang salah terlihat normal sampai satu halaman berperilaku seperti versi lama.
+- `scripts/perbarui.cjs` tidak lagi meng-compile. Langkah `build` diganti `pasang-build`: menarik branch build, memverifikasi SHA-nya, menyimpan `.next` lama sebagai `.next-sebelumnya`, lalu menukarnya. Pemulihan jadi tidak butuh jaringan maupun compiler, cukup memindahkan direktori kembali.
+- Halaman `/pembaruan` menampilkan keadaan baru "menunggu GitHub selesai membangun" dan mengunci tombolnya, supaya pemilik tidak menekan tombol yang pasti ditolak.
+- `.cpanel/deploy.sh` mengikuti alur yang sama untuk jalur manual.
+- `.gitignore`: `.next-sebelumnya/` dan `restart.txt` ikut diabaikan. Tanpa itu keduanya membuat working tree terlihat kotor dan pembaruan berikutnya selalu ditolak penjaga "ada perubahan lokal".
+**File:** .github/workflows/build.yml, scripts/perbarui.cjs, .cpanel/deploy.sh, src/lib/pembaruan.ts, src/lib/pembaruan-git.ts, src/components/admin/pembaruan-client.tsx, .gitignore
+**Catatan:** Diuji di klon terpisah dengan branch build tiruan, empat skenario: jalur sukses menyelesaikan enam langkah tanpa satu pun `next build` di server; riwayat yang bukan fast forward ditolak; build yang masih untuk commit lama ditolak sebelum kode berpindah sama sekali; dan `npm ci` yang gagal sesudah kode berpindah memicu pemulihan yang mengembalikan HEAD sekaligus `.next` ke keadaan semula (BUILD_ID terverifikasi identik). `npm run typecheck`, `lint`, dan `test` (69 lolos) bersih. Yang belum diuji: workflow GitHub Actions-nya sendiri, karena baru bisa berjalan setelah ter-push.
+
 ## 2026-08-19 - Dua aplikasi cPanel: origin tepercaya dan jalur deploy
 **Agen:** claude | **Status:** selesai
 **Kenapa:** Pemilik memakai dua aplikasi Node di akun cPanel yang sama, `offroad-garut` untuk produksi dan `offroad-garut-dev` untuk pengujian, dengan Application mode Production dan Development. Dua hal jadi salah karena itu.

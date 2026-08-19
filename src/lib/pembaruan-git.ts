@@ -49,6 +49,13 @@ export type InfoVersi = {
   shaTerbaru: string;
   tertinggal: number;
   perubahan: { sha: string; judul: string; tanggal: string }[];
+  /**
+   * Apakah GitHub Actions sudah menyelesaikan build untuk commit terbaru.
+   * Server tidak meng-compile sendiri, jadi commit yang buildnya belum jadi
+   * belum bisa dipasang.
+   */
+  buildSiap: boolean;
+  buildUntukSha: string | null;
 };
 
 /**
@@ -87,6 +94,35 @@ export async function bacaVersi(branch: string): Promise<InfoVersi> {
           })
       : [];
 
+  // Branch hasil build selalu commit yatim yang di-force push, jadi ref
+  // lokalnya wajib dipaksa maju.
+  const branchBuild = `build-${branch}`;
+  let buildUntukSha: string | null = null;
+  try {
+    await jalankan("git", [
+      "fetch",
+      "origin",
+      `+refs/heads/${branchBuild}:refs/remotes/origin/${branchBuild}`,
+      "--force",
+    ]);
+    const info = await jalankan("git", [
+      "show",
+      `origin/${branchBuild}:BUILD-INFO.json`,
+    ]);
+    const terurai: unknown = JSON.parse(info);
+    if (
+      typeof terurai === "object" &&
+      terurai !== null &&
+      "sumberSha" in terurai &&
+      typeof (terurai as { sumberSha: unknown }).sumberSha === "string"
+    ) {
+      buildUntukSha = (terurai as { sumberSha: string }).sumberSha;
+    }
+  } catch {
+    // Branch buildnya belum ada atau belum bisa dibaca. Bukan alasan untuk
+    // menggagalkan seluruh halaman.
+  }
+
   return {
     shaSekarang,
     shaPendek: shaSekarang.slice(0, 7),
@@ -95,6 +131,8 @@ export async function bacaVersi(branch: string): Promise<InfoVersi> {
     shaTerbaru,
     tertinggal: Number.isFinite(tertinggal) ? tertinggal : 0,
     perubahan,
+    buildSiap: buildUntukSha === shaTerbaru,
+    buildUntukSha,
   };
 }
 

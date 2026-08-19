@@ -13,7 +13,7 @@ export const LANGKAH_PEMBARUAN = [
   { kunci: "ambil-perubahan", label: "Mengambil perubahan dari GitHub" },
   { kunci: "tarik-kode", label: "Menerapkan kode baru" },
   { kunci: "pasang-dependensi", label: "Memasang dependensi" },
-  { kunci: "build", label: "Membangun aplikasi" },
+  { kunci: "pasang-build", label: "Memasang hasil build dari GitHub" },
   { kunci: "restart", label: "Memuat ulang aplikasi" },
 ] as const;
 

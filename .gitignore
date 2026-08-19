@@ -29,3 +29,7 @@ public/uploads/
 
 # Berkas kerja fitur pembaruan (status, log, kunci, penanda restart).
 tmp/
+# Cadangan hasil build sebelumnya, dipakai pemulihan otomatis. Tanpa baris ini
+# ia membuat working tree terlihat kotor dan pembaruan berikutnya selalu ditolak.
+.next-sebelumnya/
+restart.txt

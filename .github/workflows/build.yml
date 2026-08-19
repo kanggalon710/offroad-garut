@@ -1,0 +1,115 @@
+name: Build
+
+# Hasil build ditulis ke branch khusus (build-main / build-dev), lalu server
+# tinggal menariknya. Server cPanel tidak sanggup meng-compile Next: ruang
+# alamatnya dibatasi sekitar 4 GB, sedangkan binding SWC saja 137 MB dan build
+# worker berjalan di atasnya. Saat compiler native gagal dimuat, Next diam-diam
+# jatuh ke WebAssembly dan matinya terbaca sebagai "Cannot allocate Wasm memory"
+# tanpa petunjuk apa pun.
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+
+concurrency:
+  # Dua build untuk branch yang sama tidak boleh saling menimpa saat force push.
+  group: build-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Samakan dengan Node di cPanel Node.js Selector.
+          node-version: '22.17.0'
+          cache: npm
+
+      - name: Pasang dependensi
+        run: npm ci
+
+      - name: Periksa tipe dan lint
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Tes
+        # Tes penerimaan butuh database ter-seed yang tidak ada di CI, jadi yang
+        # dijalankan hanya yang murni logika.
+        run: npx vitest run src/test/pin.test.ts src/test/roles.test.ts src/test/db-errors.test.ts
+
+      - name: Tentukan nilai yang ditanam saat build
+        id: env
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "app_url=${{ vars.PROD_APP_URL || 'https://garutoffroad.com' }}" >> "$GITHUB_OUTPUT"
+            echo "snap_url=${{ vars.PROD_MIDTRANS_URL || 'https://app.midtrans.com/snap/snap.js' }}" >> "$GITHUB_OUTPUT"
+            echo "snap_key=${{ vars.PROD_MIDTRANS_CLIENT_KEY }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "app_url=${{ vars.DEV_APP_URL || 'https://dev.garutoffroad.com' }}" >> "$GITHUB_OUTPUT"
+            echo "snap_url=${{ vars.DEV_MIDTRANS_URL || 'https://app.sandbox.midtrans.com/snap/snap.js' }}" >> "$GITHUB_OUTPUT"
+            echo "snap_key=${{ vars.DEV_MIDTRANS_CLIENT_KEY }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build
+        env:
+          # Variabel NEXT_PUBLIC_* ditanam ke bundel di sini, bukan di server.
+          # Salah nilai berarti bundel produksi menunjuk domain yang keliru, dan
+          # gejalanya menyerupai deploy rusak alih-alih variabel yang salah.
+          NEXT_PUBLIC_APP_URL: ${{ steps.env.outputs.app_url }}
+          NEXT_PUBLIC_MIDTRANS_URL: ${{ steps.env.outputs.snap_url }}
+          NEXT_PUBLIC_MIDTRANS_CLIENT_KEY: ${{ steps.env.outputs.snap_key }}
+          # Sisa variabel hanya dibaca saat runtime, jadi validasinya dilewati
+          # supaya CI tidak perlu memegang rahasia produksi sama sekali.
+          SKIP_ENV_VALIDATION: '1'
+          NEXT_TELEMETRY_DISABLED: '1'
+          NODE_ENV: production
+        run: npm run build
+
+      - name: Pastikan tidak ada localhost yang ikut tertanam
+        run: |
+          if grep -rl "localhost:3000" .next/static/chunks/*.js >/dev/null 2>&1; then
+            echo "Bundel memuat localhost. NEXT_PUBLIC_APP_URL kemungkinan besar tidak terisi."
+            exit 1
+          fi
+          echo "Bersih."
+
+      - name: Susun isi branch hasil build
+        run: |
+          rm -rf /tmp/keluaran && mkdir -p /tmp/keluaran
+          cp -r .next /tmp/keluaran/.next
+          # SHA sumber dicatat supaya server bisa menolak build yang tidak
+          # sepasang dengan kode yang sedang ia checkout.
+          cat > /tmp/keluaran/BUILD-INFO.json <<JSON
+          {
+            "sumberSha": "${{ github.sha }}",
+            "branchSumber": "${{ github.ref_name }}",
+            "dibangunPada": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "nomorJob": "${{ github.run_number }}"
+          }
+          JSON
+
+      - name: Dorong ke branch hasil build
+        env:
+          BRANCH_BUILD: build-${{ github.ref_name }}
+        run: |
+          cd /tmp/keluaran
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # .next ada di .gitignore repo utama, jadi wajib dipaksa. Di sini
+          # tidak ada .gitignore, tapi -f menjaga kalau ada yang menyalinnya.
+          git add -Af
+          git commit -q -m "build ${{ github.ref_name }} dari ${{ github.sha }}"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          # Commit yatim yang selalu ditimpa: branch ini menyimpan tepat satu
+          # commit, jadi repositori tidak bertambah sebesar satu build tiap rilis.
+          git push -q --force origin "HEAD:refs/heads/$BRANCH_BUILD"
+          echo "Terdorong ke $BRANCH_BUILD"

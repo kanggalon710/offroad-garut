@@ -1,17 +1,18 @@
 /**
  * Mesin pembaruan aplikasi.
  *
+ * Server TIDAK meng-compile apa pun. cPanel membatasi ruang alamat sekitar
+ * 4 GB, sedangkan binding SWC saja 137 MB dan build worker berjalan di atasnya;
+ * saat compiler native gagal dimuat Next diam-diam jatuh ke WebAssembly dan
+ * matinya terbaca sebagai "Cannot allocate Wasm memory" tanpa petunjuk apa pun.
+ * Karena itu build dikerjakan GitHub Actions dan hasilnya didorong ke branch
+ * khusus (build-main / build-dev). Skrip ini tinggal memasangnya.
+ *
  * Dijalankan sebagai proses LEPAS oleh src/server/routers/pembaruan.ts, bukan
- * di dalam request. Alasannya: langkah terakhirnya me-restart aplikasi, dan di
- * bawah Passenger restart itu mematikan proses yang sedang melayani request
- * pemicunya sendiri. Kalau dijalankan inline, peramban akan menggantung
- * menunggu jawaban yang tidak akan pernah datang.
+ * di dalam request: langkah terakhirnya me-restart aplikasi, dan di bawah
+ * Passenger restart mematikan proses yang sedang melayani request pemicunya.
  *
- * Kemajuan ditulis ke tmp/pembaruan-status.json supaya halaman tetap bisa
- * membacanya sesudah aplikasi restart.
- *
- * CJS murni: di cPanel `tsx` gagal alokasi Wasm karena RLIMIT_AS ketat
- * (lihat scripts/set-admin.cjs).
+ * CJS murni: di cPanel `tsx` gagal alokasi Wasm karena RLIMIT_AS ketat.
  *
  * Jalankan manual:
  *   node scripts/perbarui.cjs
@@ -21,22 +22,24 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const AKAR = path.join(__dirname, "..");
-// Nama berkas ini dibaca juga oleh src/lib/pembaruan.ts. Kalau salah satunya
-// berubah, ubah keduanya.
+// Nama berkas ini dibaca juga oleh src/lib/pembaruan-git.ts. Kalau salah
+// satunya berubah, ubah keduanya.
 const DIR_TMP = path.join(AKAR, "tmp");
 const BERKAS_STATUS = path.join(DIR_TMP, "pembaruan-status.json");
 const BERKAS_LOG = path.join(DIR_TMP, "pembaruan.log");
 const BERKAS_KUNCI = path.join(DIR_TMP, "pembaruan.lock");
 
-/** Sama dengan .cpanel/deploy.sh: shared hosting RLIMIT_AS ketat. */
-const NODE_OPTIONS = "--max-old-space-size=768 --max-semi-space-size=64";
+const DIR_BUILD_BARU = path.join(DIR_TMP, "build-baru");
+const TAR_BUILD = path.join(DIR_TMP, "build.tar");
+const DIR_NEXT = path.join(AKAR, ".next");
+const DIR_NEXT_LAMA = path.join(AKAR, ".next-sebelumnya");
 
 const LANGKAH = [
   "persiapan",
   "ambil-perubahan",
   "tarik-kode",
   "pasang-dependensi",
-  "build",
+  "pasang-build",
   "restart",
 ];
 
@@ -55,9 +58,8 @@ function bacaEnvBranch() {
 }
 
 function catat(pesan) {
-  const baris = `[${new Date().toISOString()}] ${pesan}\n`;
   try {
-    fs.appendFileSync(BERKAS_LOG, baris);
+    fs.appendFileSync(BERKAS_LOG, `[${new Date().toISOString()}] ${pesan}\n`);
   } catch {
     // Log gagal ditulis tidak boleh menggagalkan pembaruan
   }
@@ -80,21 +82,21 @@ function jalankan(perintah, argumen, { bolehGagal = false } = {}) {
     catat(`$ ${perintah} ${argumen.join(" ")}`);
     const anak = spawn(perintah, argumen, {
       cwd: AKAR,
-      env: { ...process.env, NODE_OPTIONS, NEXT_TELEMETRY_DISABLED: "1" },
+      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
       stdio: ["ignore", "pipe", "pipe"],
     });
 
     let keluaran = "";
-    anak.stdout.on("data", (d) => {
+    const kumpulkan = (d) => {
       keluaran += d.toString();
       catat(d.toString().trimEnd());
-    });
-    anak.stderr.on("data", (d) => {
-      keluaran += d.toString();
-      catat(d.toString().trimEnd());
-    });
+    };
+    anak.stdout.on("data", kumpulkan);
+    anak.stderr.on("data", kumpulkan);
 
-    anak.on("error", (e) => reject(new Error(`${perintah} tidak bisa dijalankan: ${e.message}`)));
+    anak.on("error", (e) =>
+      reject(new Error(`${perintah} tidak bisa dijalankan: ${e.message}`)),
+    );
     anak.on("close", (kode) => {
       if (kode === 0 || bolehGagal) resolve({ kode, keluaran: keluaran.trim() });
       else reject(new Error(`${perintah} ${argumen[0]} gagal dengan kode ${kode}`));
@@ -116,17 +118,59 @@ function sentuhPenandaRestart() {
   }
 }
 
-async function bangunUlang() {
-  await jalankan("npm", ["ci", "--omit=dev", "--include=optional"]);
-  await jalankan("npx", ["next", "build"]);
+/** Menarik branch hasil build dan membongkarnya ke direktori sementara. */
+async function ambilHasilBuild(branchBuild) {
+  await jalankan("git", [
+    "fetch",
+    "origin",
+    // Branch build selalu commit yatim yang di-force push, jadi ref lokalnya
+    // wajib dipaksa maju.
+    `+refs/heads/${branchBuild}:refs/remotes/origin/${branchBuild}`,
+    "--force",
+  ]);
+
+  fs.rmSync(DIR_BUILD_BARU, { recursive: true, force: true });
+  fs.mkdirSync(DIR_BUILD_BARU, { recursive: true });
+  await jalankan("git", ["archive", "--format=tar", "-o", TAR_BUILD, `origin/${branchBuild}`]);
+  await jalankan("tar", ["-xf", TAR_BUILD, "-C", DIR_BUILD_BARU]);
+  fs.rmSync(TAR_BUILD, { force: true });
+
+  const berkasInfo = path.join(DIR_BUILD_BARU, "BUILD-INFO.json");
+  if (!fs.existsSync(berkasInfo)) {
+    throw new Error(`Branch ${branchBuild} tidak memuat BUILD-INFO.json.`);
+  }
+  if (!fs.existsSync(path.join(DIR_BUILD_BARU, ".next"))) {
+    throw new Error(`Branch ${branchBuild} tidak memuat direktori .next.`);
+  }
+  return JSON.parse(fs.readFileSync(berkasInfo, "utf8"));
 }
 
+/** Menukar .next dengan yang baru, menyimpan yang lama untuk pemulihan. */
+function pasangHasilBuild() {
+  fs.rmSync(DIR_NEXT_LAMA, { recursive: true, force: true });
+  if (fs.existsSync(DIR_NEXT)) {
+    fs.renameSync(DIR_NEXT, DIR_NEXT_LAMA);
+  }
+  fs.renameSync(path.join(DIR_BUILD_BARU, ".next"), DIR_NEXT);
+  fs.rmSync(DIR_BUILD_BARU, { recursive: true, force: true });
+}
+
+/**
+ * Mengembalikan kode dan hasil build ke keadaan sebelum pembaruan.
+ *
+ * Tidak butuh jaringan dan tidak butuh compiler: .next lama masih ada di disk,
+ * jadi pemulihan hanya memindahkan direktori.
+ */
 async function pulihkan(shaAsal, langkahGagal, pesanGagal) {
   catat(`PEMULIHAN: kembali ke ${shaAsal} karena langkah "${langkahGagal}" gagal`);
   tulisStatus({ keadaan: "memulihkan", langkahGagal, pesan: pesanGagal });
   try {
     await git("reset", "--hard", shaAsal);
-    await bangunUlang();
+    if (fs.existsSync(DIR_NEXT_LAMA)) {
+      fs.rmSync(DIR_NEXT, { recursive: true, force: true });
+      fs.renameSync(DIR_NEXT_LAMA, DIR_NEXT);
+    }
+    await jalankan("npm", ["ci", "--omit=dev", "--include=optional"]);
     sentuhPenandaRestart();
     tulisStatus({
       keadaan: "dipulihkan",
@@ -150,6 +194,7 @@ async function pulihkan(shaAsal, langkahGagal, pesanGagal) {
 
 async function main() {
   const branch = bacaEnvBranch();
+  const branchBuild = `build-${branch}`;
   fs.mkdirSync(DIR_TMP, { recursive: true });
 
   tulisStatus({
@@ -162,14 +207,12 @@ async function main() {
     pesan: null,
   });
 
-  // Langkah 1: catat titik pulang sebelum apa pun berubah.
   const shaAsal = await git("rev-parse", "HEAD");
   tulisStatus({ shaAsal, shaSekarang: shaAsal });
   catat(`Titik pulang: ${shaAsal}`);
 
-  // Langkah 2: menolak bekerja di working tree yang kotor. Kalau ada
-  // perubahan lokal yang belum di-commit, reset saat pemulihan akan
-  // menghapusnya diam-diam.
+  // Menolak bekerja di working tree yang kotor: reset saat pemulihan akan
+  // menghapus perubahan lokal itu diam-diam.
   const kotor = await git("status", "--porcelain");
   if (kotor) {
     throw Object.assign(
@@ -191,17 +234,13 @@ async function main() {
     await git("fetch", "origin", branch, "--prune");
     tandai("ambil-perubahan");
 
-    // Hanya fast forward. Kalau riwayat server bercabang dari remote,
-    // berhenti daripada menimpa commit yang cuma ada di server.
+    // Hanya fast forward.
     const { kode } = await jalankan(
       "git",
       ["merge-base", "--is-ancestor", "HEAD", `origin/${branch}`],
       { bolehGagal: true },
     );
     if (kode !== 0) {
-      // Bisa berarti riwayatnya bercabang, bisa juga server justru lebih maju
-      // daripada remote. Dua-duanya bukan fast forward dan dua-duanya perlu
-      // dilihat manusia, jadi berhenti daripada menebak.
       throw Object.assign(
         new Error(
           `Kode di server tidak sejalan dengan origin/${branch}: riwayatnya bercabang atau server justru lebih maju. Pembaruan dibatalkan, perlu diperiksa manual lewat Terminal cPanel.`,
@@ -210,19 +249,48 @@ async function main() {
       );
     }
 
+    // Hasil build diambil SEBELUM kode ditarik, supaya kalau CI belum selesai
+    // membangun commit terbaru, server tidak terlanjur pindah kode dan berdiri
+    // di atas .next yang tidak sepasang.
+    const tujuanSha = await git("rev-parse", `origin/${branch}`);
+
+    // Sampai titik ini belum ada yang berubah di server, jadi kegagalan di sini
+    // cukup dibatalkan. Memicu pemulihan hanya akan menjalankan npm ci sia-sia
+    // dan melaporkan "dipulihkan" untuk sesuatu yang tidak pernah bergerak.
+    let info;
+    try {
+      info = await ambilHasilBuild(branchBuild);
+    } catch (e) {
+      throw Object.assign(
+        new Error(
+          `Gagal mengambil hasil build dari ${branchBuild}: ${e instanceof Error ? e.message : String(e)}`,
+        ),
+        { langkah: "ambil-perubahan", tanpaPemulihan: true },
+      );
+    }
+    if (info.sumberSha !== tujuanSha) {
+      throw Object.assign(
+        new Error(
+          `Hasil build di ${branchBuild} masih untuk commit ${String(info.sumberSha).slice(0, 7)}, sedangkan yang akan dipasang ${tujuanSha.slice(0, 7)}. Tunggu GitHub Actions selesai lalu coba lagi.`,
+        ),
+        { langkah: "ambil-perubahan", tanpaPemulihan: true },
+      );
+    }
+
     tulisStatus({ langkah: "tarik-kode" });
     await git("merge", "--ff-only", `origin/${branch}`);
-    const shaBaru = await git("rev-parse", "HEAD");
-    tulisStatus({ shaSekarang: shaBaru });
+    tulisStatus({ shaSekarang: tujuanSha });
     tandai("tarik-kode");
 
     tulisStatus({ langkah: "pasang-dependensi" });
+    // --include=optional wajib eksplisit: binary per-platform adalah optional
+    // dependency, dan tanpa itu Next jatuh ke WebAssembly saat runtime.
     await jalankan("npm", ["ci", "--omit=dev", "--include=optional"]);
     tandai("pasang-dependensi");
 
-    tulisStatus({ langkah: "build" });
-    await jalankan("npx", ["next", "build"]);
-    tandai("build");
+    tulisStatus({ langkah: "pasang-build" });
+    pasangHasilBuild();
+    tandai("pasang-build");
 
     tulisStatus({ langkah: "restart" });
     sentuhPenandaRestart();
@@ -231,10 +299,10 @@ async function main() {
     tulisStatus({
       keadaan: "selesai",
       langkah: null,
-      shaSekarang: shaBaru,
+      shaSekarang: tujuanSha,
       selesaiPada: new Date().toISOString(),
     });
-    catat(`SELESAI. Sekarang di ${shaBaru}.`);
+    catat(`SELESAI. Sekarang di ${tujuanSha}.`);
   } catch (e) {
     const langkah = e.langkah || status?.langkah || "tidak diketahui";
     if (e.tanpaPemulihan) {
@@ -252,8 +320,8 @@ async function main() {
 }
 
 /**
- * Hanya berjalan kalau dipanggil langsung. Tanpa penjaga ini, modulnya
- * memulai pembaruan sungguhan begitu di-require, dan itu sempat terjadi.
+ * Hanya berjalan kalau dipanggil langsung. Tanpa penjaga ini, modulnya memulai
+ * pembaruan sungguhan begitu di-require, dan itu sempat terjadi.
  */
 if (require.main === module) {
   main()

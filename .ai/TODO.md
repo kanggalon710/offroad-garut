@@ -147,6 +147,18 @@ pemilik project.
       `tmp/pembaruan-status.json`, jadi tinggal menambah tombol yang memanggil jalur
       pemulihan yang sama tanpa perlu ada kegagalan lebih dulu.
 
+- [ ] **Workflow GitHub Actions belum pernah berjalan sungguhan.** Logikanya sudah diuji
+      lewat branch build tiruan di klon lokal, tapi `build.yml` sendiri baru akan
+      terverifikasi setelah push pertama. Periksa tab Actions setelah merge.
+
+- [ ] **Variabel `NEXT_PUBLIC_*` untuk CI belum diisi.** Workflow memakai
+      `vars.PROD_MIDTRANS_CLIENT_KEY` dan `vars.DEV_MIDTRANS_CLIENT_KEY` yang belum ada di
+      Settings > Secrets and variables > Actions. Selama kosong, Snap Midtrans tidak akan
+      berfungsi di bundel hasil CI.
+
+- [ ] **Kunci Midtrans sandbox untuk dev belum ada.** `.env.production` dev masih memakai
+      placeholder, jadi alur pembayaran belum bisa diuji di dev.
+
 ## Prioritas rendah
 
 - [ ] **Perhitungan harga ditulis di tiga tempat.** `pricePerPax * paxCount` muncul di
