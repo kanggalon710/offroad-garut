@@ -20,7 +20,7 @@ import { AdminPage } from "@/components/admin/admin-page";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardActions } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -218,7 +218,7 @@ export function GalleryManagerClient() {
         {/* min-w-0 wajib: item grid tidak menyusut di bawah min-content-nya, dan
             judul album ber-truncate (white-space: nowrap) menyumbang lebar
             teks penuh sehingga melebarkan halaman di layar sempit. */}
-        <section className="min-w-0 space-y-3 lg:col-span-4" aria-label="Daftar album">
+        <section className="min-w-0 space-y-4 lg:col-span-4" aria-label="Daftar album">
           <h2 className="font-bold text-foreground">Daftar Album</h2>
 
           {albumsQuery.isLoading ? (
@@ -230,7 +230,7 @@ export function GalleryManagerClient() {
               description="Buat album pertama lewat tombol Buat Album Baru di atas."
             />
           ) : (
-            <ul className="space-y-2">
+            <ul className="space-y-3">
               {albums.map((album) => {
                 const visibility = album.visibility as AlbumVisibility;
                 const isSelected = selectedAlbumId === album.id;
@@ -252,7 +252,7 @@ export function GalleryManagerClient() {
                         type="button"
                         onClick={() => setSelectedAlbumId(album.id)}
                         aria-pressed={isSelected}
-                        className="flex min-h-11 w-full items-start justify-between gap-2 p-3 text-left transition-colors duration-150 hover:bg-muted"
+                        className="flex min-h-11 w-full items-start justify-between gap-3 p-4 text-left transition-colors duration-150 hover:bg-muted"
                       >
                         <span className="min-w-0 flex-1">
                           {/* min-w-0 juga di baris ini, kalau tidak truncate
@@ -276,14 +276,15 @@ export function GalleryManagerClient() {
                           </span>
                         </span>
 
-                        <Badge tone={ALBUM_VISIBILITY_TONE[visibility]}>
+                        <Badge tone={ALBUM_VISIBILITY_TONE[visibility]} className="shrink-0">
                           {ALBUM_VISIBILITY_LABEL[visibility]}
                         </Badge>
                       </button>
 
-                      <div className="flex items-center justify-between gap-2 border-t border-border px-1">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-1 py-2">
                         <Button
                           variant="ghost"
+                          size="sm"
                           onClick={() => void copyShareLink(album.slug)}
                         >
                           <Copy className="size-4" aria-hidden="true" />
@@ -300,6 +301,7 @@ export function GalleryManagerClient() {
                         >
                           <Button
                             variant="ghost"
+                            size="sm"
                             className="text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="size-4" aria-hidden="true" />
@@ -333,7 +335,7 @@ export function GalleryManagerClient() {
             />
           ) : (
             <>
-              <Card className="p-4 sm:p-6">
+              <Card className="p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -353,7 +355,7 @@ export function GalleryManagerClient() {
                       </p>
                     ) : null}
 
-                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                    <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
                       <a
                         href={`/album/${detail.album.slug}`}
                         target="_blank"
@@ -388,8 +390,8 @@ export function GalleryManagerClient() {
                 </div>
               </Card>
 
-              <div>
-                <h3 className="mb-3 font-bold text-foreground">
+              <div className="space-y-4">
+                <h3 className="font-bold text-foreground">
                   Daftar Media ({detail.items.length})
                 </h3>
 
@@ -400,12 +402,12 @@ export function GalleryManagerClient() {
                     description="Tekan Tambah Media untuk mengunggah foto, menempel tautan YouTube, atau melampirkan dokumen PDF."
                   />
                 ) : (
-                  <ul className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+                  <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                     {detail.items.map((item) => {
                       const type = item.itemType as AlbumItemType;
                       return (
                         <li key={item.id}>
-                          <Card className="flex h-full flex-col justify-between overflow-hidden p-3">
+                          <Card className="flex h-full flex-col justify-between p-4">
                             <div>
                               {type === "image" ? (
                                 <div className="relative aspect-[4/3] overflow-hidden rounded-[var(--radius-control)] bg-muted">
@@ -435,13 +437,13 @@ export function GalleryManagerClient() {
                                 {item.title || "Tanpa judul"}
                               </h4>
                               {item.description ? (
-                                <p className="line-clamp-2 text-legal text-muted-foreground">
+                                <p className="mt-1 line-clamp-2 text-legal text-muted-foreground">
                                   {item.description}
                                 </p>
                               ) : null}
                             </div>
 
-                            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-1">
+                            <CardActions className="items-center justify-between">
                               <Badge tone="neutral">
                                 {ALBUM_ITEM_TYPE_LABEL[type] ?? item.itemType}
                               </Badge>
@@ -463,7 +465,7 @@ export function GalleryManagerClient() {
                                   <Trash2 className="size-4" aria-hidden="true" />
                                 </Button>
                               </ConfirmDialog>
-                            </div>
+                            </CardActions>
                           </Card>
                         </li>
                       );

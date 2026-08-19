@@ -8,13 +8,13 @@ import {
   Globe,
   Lock,
   Share2,
-  X,
 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { Container, Section } from "@/components/shared/container";
 import type { Album, AlbumItem } from "@/lib/db/schema";
 
@@ -25,8 +25,29 @@ export function AlbumViewClient({
   album: Album;
   items: AlbumItem[];
 }) {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [indeksFoto, setIndeksFoto] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Lightbox hanya menampilkan item bertipe foto, jadi indeksnya dihitung
+  // terhadap daftar foto saja, bukan terhadap seluruh isi album.
+  const fotoAlbum = useMemo(
+    () =>
+      items
+        .filter((item) => item.itemType === "image")
+        .map((item) => ({
+          src: item.mediaUrl,
+          alt: item.title || `Foto dari album ${album.title}`,
+        })),
+    [items, album.title],
+  );
+
+  const indeksFotoPerId = useMemo(() => {
+    const peta = new Map<string, number>();
+    items
+      .filter((item) => item.itemType === "image")
+      .forEach((item, urutan) => peta.set(item.id, urutan));
+    return peta;
+  }, [items]);
 
   function handleShare() {
     if (navigator.share) {
@@ -62,6 +83,7 @@ export function AlbumViewClient({
               alt={album.title}
               fill
               priority
+              sizes="100vw"
               className="object-cover"
             />
           </div>
@@ -141,20 +163,23 @@ export function AlbumViewClient({
                 >
                   {/* Foto */}
                   {item.itemType === "image" ? (
-                    <div
-                      className="group/img relative aspect-[4/3] cursor-pointer overflow-hidden rounded-[var(--radius-control)] bg-muted"
-                      onClick={() => setSelectedImage(item.mediaUrl)}
+                    <button
+                      type="button"
+                      aria-label={`Perbesar ${item.title || "foto album"}`}
+                      onClick={() => setIndeksFoto(indeksFotoPerId.get(item.id) ?? null)}
+                      className="group/img relative block aspect-[4/3] w-full cursor-pointer overflow-hidden rounded-[var(--radius-control)] bg-muted"
                     >
                       <Image
                         src={item.mediaUrl}
                         alt={item.title || "Foto album"}
                         fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                         className="object-cover transition-transform duration-300 group-hover/img:scale-105"
                       />
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover/img:opacity-100 text-white font-medium text-legal">
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-legal font-medium text-white opacity-0 transition-opacity group-hover/img:opacity-100">
                         Klik untuk memperbesar
-                      </div>
-                    </div>
+                      </span>
+                    </button>
                   ) : item.itemType === "youtube" ? (
                     <div className="relative aspect-video overflow-hidden rounded-[var(--radius-control)] bg-black">
                       <iframe
@@ -212,31 +237,11 @@ export function AlbumViewClient({
         </Container>
       </Section>
 
-      {/* Lightbox Preview Modal Foto */}
-      {selectedImage ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setSelectedImage(null)}
-        >
-          <button
-            type="button"
-            onClick={() => setSelectedImage(null)}
-            className="absolute top-4 right-4 rounded-full bg-white/20 p-2 text-white hover:bg-white/40"
-            aria-label="Tutup"
-          >
-            <X className="size-6" />
-          </button>
-          <div className="relative max-h-[90vh] max-w-[90vw]">
-            <Image
-              src={selectedImage}
-              alt="Preview foto"
-              width={1920}
-              height={1080}
-              className="max-h-[85vh] w-auto rounded-[var(--radius-card)] object-contain"
-            />
-          </div>
-        </div>
-      ) : null}
+      <ImageLightbox
+        images={fotoAlbum}
+        index={indeksFoto}
+        onIndexChange={setIndeksFoto}
+      />
     </div>
   );
 }

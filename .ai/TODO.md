@@ -78,13 +78,18 @@ pemilik project.
       sendiri. Ini yang tersisa dari butir "blok detail booking diulang di tiga file".
 
 - [ ] **`album-view-client.tsx` melanggar design token.** Memakai `shadow-xs`,
-      `hover:shadow-md`, `text-slate-300`, `bg-white/10`, `border-white/20`, dan
-      `shadow-lg` yang bukan skala bayangan project. Tombol "Download Full Album HD
-      (Google Drive)" juga membuat halaman `/album/[slug]` scroll horizontal 2px di 360px
-      karena labelnya terlalu panjang untuk dibungkus. Sudah ada sebelum perombakan
-      pengelola dan sengaja dibiarkan karena halaman publik di luar cakupan.
+      `hover:shadow-md`, `text-slate-300`, `bg-slate-900`, `bg-white/10`,
+      `border-white/20`, `shadow-lg`, serta `bg-emerald-*` dan `bg-blue-*` untuk kartu
+      PDF dan Google Drive. Judul hero juga memakai `text-3xl sm:text-4xl lg:text-5xl`
+      alih-alih skala tipografi project, heading melompat dari `h1` ke `h3`, dan tombol
+      unduh menimpa gaya primitif dengan class (`bg-accent hover:bg-accent/90`) padahal
+      `variant="primary"` sudah persis itu.
       **Rencana:** pendekkan label jadi "Unduh album lengkap", ganti warna hardcoded ke
-      token, dan samakan bayangannya ke `--shadow-card` / `--shadow-raised`.
+      token, samakan bayangannya ke `--shadow-card` / `--shadow-raised`, dan pakai
+      `variant` alih-alih menimpa class.
+      **2026-08-19:** luapan horizontal 2px di 360px yang tercatat di sini sudah tidak
+      terukur lagi (0px di 360/768/1280). Pelanggaran tokennya masih ada; sengaja tidak
+      dikerjakan bersama perbaikan bug galeri karena pemilik membatasi cakupan.
 
 - [ ] **Navbar publik punya target sentuh di bawah 44px.** Tautan "Offroad Garut",
       "Paket", "Titik Kumpul", tombol "Menu pengguna" (40px), dan nomor WhatsApp di footer
@@ -97,6 +102,33 @@ pemilik project.
 
 - [ ] **`react-hook-form` dan `@hookform/resolvers` terpasang tapi tidak pernah dipakai.**
       Semua form masih `useState` manual. Entah dipakai, entah dicopot dari dependensi.
+
+- [ ] **Cloudflare R2 terpasang tapi tidak pernah dipakai.** `src/lib/r2.ts` lengkap
+      dengan `uploadToR2`, dan `R2_*` plus `NEXT_PUBLIC_R2_PUBLIC_URL` ada di env, tapi
+      fungsinya nol pemanggil. `@aws-sdk/client-s3` dan `@aws-sdk/s3-request-presigner`
+      ikut terpasang untuk kode yang tidak jalan. Penyimpanan sebenarnya ada di disk
+      server lewat `src/lib/upload.ts`.
+      **Rencana:** entah sambungkan R2 ke `/api/upload` (hemat kuota disk cPanel dan dapat
+      CDN, tapi butuh bucket asli dan migrasi foto lama), entah copot `r2.ts` beserta dua
+      dependensi AWS-nya. Jangan dibiarkan menggantung seperti sekarang.
+
+- [ ] **Berkas unggahan tidak ikut ter-backup dan tidak ada batas kuota.**
+      `public/uploads/` sekarang di-gitignore (memang seharusnya), jadi satu-satunya
+      salinan foto pelanggan ada di disk server produksi. Belum ada backup, belum ada
+      batas total ukuran, dan belum ada pembersihan berkas yatim saat item album dihapus
+      (hapusnya soft delete, berkasnya tetap di disk selamanya).
+
+- [ ] **`next.config.ts` memuat kunci yang tidak dikenal Next 15.** `swcMinify` memicu
+      peringatan "Unrecognized key(s) in object" di setiap start dan build. `experimental.cpus`
+      juga perlu dicek masih sah atau tidak. Sekalian: `typescript.ignoreBuildErrors` dan
+      `eslint.ignoreDuringBuilds` keduanya `true`, jadi error tipe bisa lolos ke produksi
+      tanpa suara. Itu disengaja karena cPanel tidak memasang devDependencies saat build,
+      tapi risikonya perlu ditulis di dokumen deploy.
+
+- [ ] **`drizzle-orm` ada di `devDependencies` padahal dipakai saat runtime.**
+      `.cpanel.yml` menjalankan `npm ci --omit=dev` sebelum `npx next build`, jadi paket
+      ini semestinya tidak terpasang saat build produksi. Perlu dipastikan apakah deploy
+      cPanel benar-benar memakai `--omit=dev`; kalau iya, pindahkan ke `dependencies`.
 
 ## Prioritas rendah
 

@@ -4,13 +4,12 @@ import { Edit2, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import {
-  CardActions,
   SectionToolbar,
 } from "@/components/admin/master-data/section-toolbar";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, CardActions } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {

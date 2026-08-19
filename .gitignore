@@ -23,3 +23,6 @@ tsconfig.tsbuildinfo
 .claude/settings.local.json
 
 drizzle/meta
+
+# Berkas yang diunggah pengelola saat aplikasi berjalan. Tidak boleh ikut ter-commit.
+public/uploads/

@@ -14,27 +14,18 @@ export function Card({ className, ...props }: ComponentProps<"div">) {
   );
 }
 
-export function CardHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("p-5 pb-3", className)} {...props} />;
-}
-
-export function CardTitle({ className, ...props }: ComponentProps<"h3">) {
-  return (
-    <h3
-      className={cn("text-title font-bold leading-tight", className)}
-      {...props}
-    />
-  );
-}
-
-export function CardContent({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("p-5 pt-0", className)} {...props} />;
-}
-
-export function CardFooter({ className, ...props }: ComponentProps<"div">) {
+/**
+ * Baris aksi di kaki kartu, dipisahkan garis. Dipakai kartu master data dan
+ * kartu media di halaman galeri, jadi tinggal di sini dan bukan di folder
+ * salah satu pemakainya.
+ */
+export function CardActions({ className, ...props }: ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex items-center gap-3 p-5 pt-0", className)}
+      className={cn(
+        "mt-4 flex flex-wrap justify-end gap-2 border-t border-border pt-3",
+        className,
+      )}
       {...props}
     />
   );

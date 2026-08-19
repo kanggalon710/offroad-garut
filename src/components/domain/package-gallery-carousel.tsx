@@ -1,8 +1,10 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 
 type PackageImageItem = {
   id: string;
@@ -22,10 +24,13 @@ export function PackageGalleryCarousel({
   packageName,
 }: Props) {
   // If images array is empty, use fallback image as single item
-  const displayImages: PackageImageItem[] =
-    images.length > 0
-      ? images
-      : [{ id: "fallback", imageUrl: fallbackImage, alt: packageName }];
+  const displayImages: PackageImageItem[] = useMemo(
+    () =>
+      images.length > 0
+        ? images
+        : [{ id: "fallback", imageUrl: fallbackImage, alt: packageName }],
+    [images, fallbackImage, packageName],
+  );
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
@@ -52,23 +57,14 @@ export function PackageGalleryCarousel({
     return () => clearInterval(timer);
   }, [total, isPaused, isLightboxOpen, goToNext]);
 
-  // Keyboard navigation for lightbox
-  useEffect(() => {
-    if (!isLightboxOpen) return;
-
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setIsLightboxOpen(false);
-      } else if (e.key === "ArrowRight") {
-        goToNext();
-      } else if (e.key === "ArrowLeft") {
-        goToPrev();
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isLightboxOpen, goToNext, goToPrev]);
+  const fotoLightbox = useMemo(
+    () =>
+      displayImages.map((img, idx) => ({
+        src: img.imageUrl,
+        alt: img.alt ?? `Foto ${idx + 1} paket ${packageName}`,
+      })),
+    [displayImages, packageName],
+  );
 
   const activeImage = displayImages[currentIndex] ?? displayImages[0]!;
 
@@ -168,61 +164,14 @@ export function PackageGalleryCarousel({
         </div>
       ) : null}
 
-      {/* Fullscreen Lightbox Modal */}
-      {isLightboxOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-md">
-          {/* Tombol Close */}
-          <button
-            type="button"
-            aria-label="Tutup foto penuh"
-            onClick={() => setIsLightboxOpen(false)}
-            className="absolute right-4 top-4 z-50 flex size-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-          >
-            <X className="size-6" />
-          </button>
-
-          {/* Navigasi Kiri Lightbox */}
-          {total > 1 ? (
-            <button
-              type="button"
-              aria-label="Gambar sebelumnya"
-              onClick={goToPrev}
-              className="absolute left-4 top-1/2 z-50 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-            >
-              <ChevronLeft className="size-8" />
-            </button>
-          ) : null}
-
-          {/* Container Gambar Lightbox Fullscreen */}
-          <div className="relative max-h-[90vh] max-w-[90vw] aspect-[16/10] w-full">
-            <Image
-              src={activeImage.imageUrl}
-              alt={activeImage.alt ?? packageName}
-              fill
-              priority
-              sizes="100vw"
-              className="object-contain"
-            />
-          </div>
-
-          {/* Navigasi Kanan Lightbox */}
-          {total > 1 ? (
-            <button
-              type="button"
-              aria-label="Gambar berikutnya"
-              onClick={goToNext}
-              className="absolute right-4 top-1/2 z-50 flex size-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20"
-            >
-              <ChevronRight className="size-8" />
-            </button>
-          ) : null}
-
-          {/* Caption / Counter Lightbox */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-meta text-white/80">
-            {activeImage.alt || packageName} ({currentIndex + 1} dari {total})
-          </div>
-        </div>
-      ) : null}
+      <ImageLightbox
+        images={fotoLightbox}
+        index={isLightboxOpen ? currentIndex : null}
+        onIndexChange={(next) => {
+          if (next === null) setIsLightboxOpen(false);
+          else setCurrentIndex(next);
+        }}
+      />
     </div>
   );
 }

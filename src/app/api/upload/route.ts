@@ -3,16 +3,8 @@ import type { ZodError } from "zod";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
+import { MIME_MEDIA_DIIZINKAN } from "@/lib/media-types";
 import { processAndSaveUpload } from "@/lib/upload";
-
-const VALID_TYPES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/gif",
-  "application/pdf",
-];
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -62,7 +54,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!VALID_TYPES.includes(file.type)) {
+  if (!MIME_MEDIA_DIIZINKAN.includes(file.type)) {
     return NextResponse.json(
       { error: `Tipe file ${file.type} tidak didukung. Gunakan JPEG/PNG/WebP/GIF/PDF.` },
       { status: 400 },

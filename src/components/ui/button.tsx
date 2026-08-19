@@ -22,6 +22,9 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-white hover:brightness-95",
       },
       size: {
+        // Tetap 44px tinggi supaya target sentuh terpenuhi; hanya padding
+        // mendatarnya yang ringkas, untuk baris aksi di kaki kartu.
+        sm: "h-11 px-3 text-meta",
         md: "h-11 px-5 text-[0.9375rem]",
         lg: "h-13 px-7 text-base",
         icon: "h-11 w-11",

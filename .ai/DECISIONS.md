@@ -104,3 +104,58 @@ keyboard buatan sendiri.
 
 **Preseden:** jangan memasang role ARIA yang kontrak perilakunya tidak dipenuhi. Kalau
 pola lengkapnya tidak dibangun, pakai elemen dan atribut yang jujur menggambarkan yang ada.
+
+## 2026-08-19 - Berkas unggahan disajikan route handler, bukan dipindah ke R2
+
+**Konteks:** Foto yang diunggah pengelola tidak pernah muncul di produksi. Next.js versi
+produksi mendata isi folder `public/` hanya sekali saat aplikasi start, sedangkan
+`/api/upload` menulis foto ke `public/uploads/` saat aplikasi sudah berjalan, sehingga
+berkasnya selalu 404 sampai aplikasi di-restart.
+
+**Opsi:** (a) sajikan berkasnya lewat route handler yang membaca disk langsung,
+(b) sambungkan `src/lib/r2.ts` yang sudah lengkap ke `/api/upload` sehingga foto pindah ke
+Cloudflare R2, (c) keduanya, R2 kalau kredensialnya terisi dan disk kalau tidak.
+
+**Pilihan:** (a). `src/app/uploads/[...path]/route.ts`.
+
+**Alasan:** seluruh URL `/uploads/...` yang sudah tersimpan di database tetap berfungsi
+tanpa migrasi, foto yang sudah diunggah pemilik tidak hilang, tidak perlu bucket maupun
+kredensial baru, dan perbaikannya bisa langsung diuji di mesin sendiri. Opsi (b) benar
+untuk jangka panjang tapi menuntut pemilik menyiapkan bucket asli dan memindahkan foto
+lama lebih dulu, jadi bug produksinya akan menganggur selama itu. Opsi (c) menyisakan dua
+jalur kode yang dua-duanya harus dirawat dan diuji untuk masalah yang cuma butuh satu.
+
+**Konsekuensi:** foto tetap memakai kuota disk cPanel dan disajikan Node, bukan CDN.
+Berkasnya juga jadi satu-satunya salinan di server dan belum ter-backup. Keduanya dicatat
+di `.ai/TODO.md`. Kalau nanti pindah ke R2, handler ini tetap perlu dipertahankan selama
+masih ada baris database yang menunjuk `/uploads/...`.
+
+**Preseden:** apa pun yang ditulis ke `public/` saat aplikasi berjalan tidak akan
+disajikan Next di produksi. Berkas yang lahir setelah build wajib punya jalur penyajinya
+sendiri.
+
+## 2026-08-19 - Lightbox jadi primitif bersama di atas Radix Dialog
+
+**Konteks:** Ada dua penampil foto layar penuh. `package-gallery-carousel.tsx` punya versi
+lengkap dengan Escape, navigasi kiri/kanan, dan penghitung. `album-view-client.tsx` punya
+versi yang jauh lebih lemah: target kliknya `div` ber-onClick yang tidak bisa dijangkau
+keyboard, tanpa jebakan fokus, tanpa Escape, mengklik fotonya sendiri malah menutup, dan
+`width`/`height` tetap yang memaksa rasio 16:9 pada foto potret.
+
+**Opsi:** (a) perbaiki lightbox album di tempat, (b) angkat jadi primitif bersama dengan
+overlay buatan sendiri, (c) angkat jadi primitif bersama di atas Radix Dialog.
+
+**Pilihan:** (c). `src/components/ui/image-lightbox.tsx`.
+
+**Alasan:** opsi (a) menghasilkan versi tandingan kedua yang sama baiknya tapi berbeda,
+persis yang dilarang bagian 3 standar global. Antara (b) dan (c), Radix sudah jadi
+dependensi dan dipakai `src/components/ui/dialog.tsx`, dan ia memberi jebakan fokus,
+penutupan lewat Escape, kunci scroll latar, serta penyembunyian konten di luar dialog
+secara gratis. Menulis ulang semua itu dengan `useEffect` keydown sendiri, seperti yang
+dilakukan carousel sebelumnya, artinya merawat kode aksesibilitas buatan tangan tanpa
+alasan.
+
+**Konsekuensi:** halaman album ikut mendapat navigasi antar foto yang sebelumnya tidak
+ada. Keterangan foto sekaligus jadi judul dialognya lewat `Title asChild`, supaya pembaca
+layar tidak mendengar teks yang sama dua kali. Latarnya sengaja pekat penuh, bukan 95%,
+karena pada 95% isi halaman di baliknya masih terbaca dan mengganggu.
