@@ -57,9 +57,9 @@ Jalankan:
 npm run dev
 ```
 
-Buka http://localhost:3000. Akun pengelola bawaan seed:
-`admin@offroad.id` / `Galon@123`. **Ganti kata sandi ini
-sebelum dipakai di produksi.**
+Buka http://localhost:3000. Akun pengelola dibuat dari `SEED_ADMIN_EMAIL`,
+`SEED_ADMIN_PASSWORD`, dan `SEED_ADMIN_NAME` di `.env.local`. Seed menolak jalan
+kalau ketiganya kosong, supaya tidak ada kata sandi bawaan yang ikut ter-commit.
 
 ## Perintah
 
@@ -145,10 +145,9 @@ git checkout deploy && git merge --no-ff dev && git push
 git checkout main && git merge --no-ff deploy && git push
 ```
 
-**Cabang `main-sql`:** versi MariaDB/MySQL dari aplikasi untuk cPanel.
-Semua perintah di bawah berlaku untuk cabang ini. Alurnya sama dengan
-`dev -> deploy -> main`, yaitu `dev-sql -> deploy-sql -> main-sql` bila
-membutuhkan lingkungan preview.
+**Cabang `main`:** versi MariaDB/MySQL dari aplikasi untuk cPanel, dan inilah
+yang dipakai produksi. Semua perintah di bawah berlaku untuk cabang ini.
+Pengembangan fitur dikerjakan di `dev`, lalu di-merge ke `main` saat siap rilis.
 
 ## Pengujian lokal
 
@@ -192,7 +191,7 @@ lebih andal untuk skrip dan CI.
 
 ### cPanel (Node.js Selector & 2-Domain Setup)
 
-Setup untuk 2 domain di cPanel yang sama (`garutoffroad.com` dari `main-sql` dan `garutoffroad-dev.com` dari `dev-sql`):
+Setup untuk 2 domain di cPanel yang sama (`garutoffroad.com` dari `main` dan `garutoffroad-dev.com` dari `dev`):
 
 1. **Setup Node.js App di cPanel**
    - Buat 2 Node.js App terpisah di cPanel (**Setup Node.js App**):
@@ -205,14 +204,14 @@ Setup untuk 2 domain di cPanel yang sama (`garutoffroad.com` dari `main-sql` dan
      ```bash
      cd ~/offroad-garut-prod
      git clone <repo-url> .
-     git checkout main-sql
+     git checkout main
      cp .env.example .env.production
      ```
    - **Development:**
      ```bash
      cd ~/offroad-garut-dev
      git clone <repo-url> .
-     git checkout dev-sql
+     git checkout dev
      cp .env.example .env.production
      ```
 

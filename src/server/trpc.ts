@@ -5,6 +5,7 @@ import { ZodError } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import type { UserRole } from "@/lib/db/schema";
+import { isStaff, isSuperAdmin, toRole } from "@/lib/roles";
 
 export type TRPCContext = {
   db: typeof db;
@@ -18,10 +19,6 @@ export type TRPCContext = {
     alternativePhone: string | null;
   } | null;
 };
-
-function toRole(value: unknown): UserRole {
-  return value === "admin" || value === "owner" ? value : "customer";
-}
 
 export async function createTRPCContext(opts: {
   headers: Headers;
@@ -84,10 +81,28 @@ export const adminProcedure = t.procedure.use(({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Silakan masuk dulu" });
   }
-  if (ctx.user.role !== "admin" && ctx.user.role !== "owner") {
+  if (!isStaff(ctx.user.role)) {
     throw new TRPCError({
       code: "FORBIDDEN",
       message: "Halaman ini khusus pengelola rental",
+    });
+  }
+  return next({ ctx: { ...ctx, user: ctx.user } });
+});
+
+/**
+ * Hanya super admin. Dipakai halaman /pembaruan, yang menjalankan kode baru
+ * di server, jadi gerbangnya sengaja terpisah dari `adminProcedure`: pengelola
+ * biasa boleh mengurus pesanan tanpa ikut bisa men-deploy.
+ */
+export const superAdminProcedure = t.procedure.use(({ ctx, next }) => {
+  if (!ctx.user) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "Silakan masuk dulu" });
+  }
+  if (!isSuperAdmin(ctx.user.role)) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Halaman ini khusus super admin",
     });
   }
   return next({ ctx: { ...ctx, user: ctx.user } });

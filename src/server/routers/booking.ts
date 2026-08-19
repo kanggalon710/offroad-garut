@@ -4,6 +4,7 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm"
 import { z } from "zod";
 
 import { env } from "@/env";
+import { isStaff } from "@/lib/roles";
 import { isRowActive } from "@/lib/db/active-row";
 import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
 import {
@@ -485,7 +486,7 @@ export const bookingRouter = router({
   getBookingByCode: protectedProcedure
     .input(z.object({ bookingCode: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
-      const isStaff = ctx.user.role === "admin" || ctx.user.role === "owner";
+      const pengelola = isStaff(ctx.user.role);
 
       const [row] = await ctx.db
         .select({
@@ -502,7 +503,7 @@ export const bookingRouter = router({
         )
         .leftJoin(payments, eq(payments.bookingId, bookings.id))
         .where(
-          isStaff
+          pengelola
             ? eq(bookings.bookingCode, input.bookingCode)
             : and(
                 eq(bookings.bookingCode, input.bookingCode),
@@ -530,13 +531,13 @@ export const bookingRouter = router({
   syncBookingStatus: protectedProcedure
     .input(z.object({ bookingCode: z.string().min(1) }))
     .mutation(async ({ ctx, input }) => {
-      const isStaff = ctx.user.role === "admin" || ctx.user.role === "owner";
+      const pengelola = isStaff(ctx.user.role);
 
       const [booking] = await ctx.db
         .select()
         .from(bookings)
         .where(
-          isStaff
+          pengelola
             ? eq(bookings.bookingCode, input.bookingCode)
             : and(
                 eq(bookings.bookingCode, input.bookingCode),

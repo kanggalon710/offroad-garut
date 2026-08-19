@@ -9,10 +9,10 @@ set -e
 cd "$(dirname "$0")/.."
 
 # Ambil commit terbaru dari origin tanpa mengubah working tree
-git fetch origin main-sql --quiet
+git fetch origin main --quiet
 
 LOCAL_HASH=$(git rev-parse HEAD)
-REMOTE_HASH=$(git rev-parse origin/main-sql)
+REMOTE_HASH=$(git rev-parse origin/main)
 
 if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
     echo "[$(date)] Perubahan baru terdeteksi. Memulai auto-deploy..."
@@ -20,7 +20,7 @@ if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
     # Activate cPanel Node.js virtual environment
     source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
 
-    git pull origin main-sql --quiet
+    git pull origin main --quiet
     npm ci --omit=dev
     export NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64"
     export NEXT_TELEMETRY_DISABLED=1

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ToastProvider } from "@/components/ui/toast";
 import { auth } from "@/lib/auth";
+import { isStaff, toRole } from "@/lib/roles";
 
 /**
  * AC-OTENTIKASI-7. Middleware hanya tahu ada tidaknya cookie sesi,
@@ -22,10 +23,9 @@ export default async function AdminLayout({
 
   if (!session) redirect("/admin/login");
 
-  const role = (session.user as { role?: unknown }).role;
-  const isStaff = role === "admin" || role === "owner";
+  const role = toRole((session.user as { role?: unknown }).role);
 
-  if (!isStaff) {
+  if (!isStaff(role)) {
     return (
       <main className="flex min-h-dvh items-center justify-center px-5">
         <Card className="w-full max-w-md p-6 text-center">
@@ -55,7 +55,7 @@ export default async function AdminLayout({
   return (
     <ToastProvider>
       <div className="flex min-h-dvh flex-col bg-background">
-        <AdminHeader name={session.user.name ?? "Pengelola"} />
+        <AdminHeader name={session.user.name ?? "Pengelola"} role={role} />
         {/* Lebar akhir ditentukan tiap layar lewat prop width di AdminPage. */}
         <main id="konten" className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
           {children}

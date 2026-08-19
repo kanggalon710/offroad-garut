@@ -125,10 +125,27 @@ pemilik project.
       tanpa suara. Itu disengaja karena cPanel tidak memasang devDependencies saat build,
       tapi risikonya perlu ditulis di dokumen deploy.
 
-- [ ] **`drizzle-orm` ada di `devDependencies` padahal dipakai saat runtime.**
-      `.cpanel.yml` menjalankan `npm ci --omit=dev` sebelum `npx next build`, jadi paket
-      ini semestinya tidak terpasang saat build produksi. Perlu dipastikan apakah deploy
-      cPanel benar-benar memakai `--omit=dev`; kalau iya, pindahkan ke `dependencies`.
+- [x] 2026-08-19 **`drizzle-orm` ada di `devDependencies` padahal dipakai saat runtime.**
+      Dipindah ke `dependencies`. Wajib dikerjakan sebelum fitur pembaruan menyala, karena
+      mesinnya menjalankan `npm ci --omit=dev` juga.
+
+- [ ] **Kata sandi produksi lama sudah publik di riwayat commit.** Nilai
+      bawaannya sudah dihapus dari `src/lib/db/seed.ts`, `.env.example`, dan `README.md`,
+      tapi commit lama tetap memuatnya dan repo ini publik. Menggantinya di server adalah
+      satu-satunya perbaikan yang berlaku. Pemilik memilih melakukannya sendiri.
+
+- [ ] **Halaman pembaruan belum memaksa penggantian kata sandi, hanya PIN.** Flag
+      `must_change_credentials` dimatikan begitu PIN baru tersimpan, sedangkan kata sandinya
+      masih yang berasal dari environment. Halamannya sudah memberi peringatan, tapi belum
+      menolak sampai kata sandinya benar-benar diganti.
+
+- [ ] **Pemulihan otomatis belum diuji saat `npm ci` yang gagal, baru saat build gagal.**
+      Kegagalan pemasangan dependensi (misal jaringan putus di tengah) memicu jalur kode
+      yang sama, tapi belum pernah dijalankan sungguhan.
+
+- [ ] **Belum ada tombol rollback manual.** Hash commit sebelumnya sudah dicatat di
+      `tmp/pembaruan-status.json`, jadi tinggal menambah tombol yang memanggil jalur
+      pemulihan yang sama tanpa perlu ada kegagalan lebih dulu.
 
 ## Prioritas rendah
 
@@ -137,10 +154,11 @@ pemilik project.
       titik yang akan pecah begitu ada aturan diskon atau biaya tambahan.
       **Rencana:** satu helper `hitungTotal` di `src/lib/utils.ts`.
 
-- [ ] **Kondisi peran ditulis ulang di tiga tempat.** Pengecekan `admin` atau `owner`
-      muncul di layout admin, di `src/server/trpc.ts`, dan di router booking. Penyempitan
-      tipe sesi juga disalin.
-      **Rencana:** satu helper pembaca sesi.
+- [x] 2026-08-19 **Kondisi peran ditulis ulang di tiga tempat.** Diangkat jadi
+      `src/lib/roles.ts` (`isStaff`, `isSuperAdmin`, `toRole`) dan dipakai di layout
+      pengelola, `src/server/trpc.ts`, serta router booking. Ternyata ada di empat tempat,
+      bukan tiga, dan `toRole` yang terlewat akan diam-diam menurunkan peran baru jadi
+      `customer`.
 
 - [ ] **Predikat gabungan booking dan paket berulang di empat tempat**, dan pemeriksaan
       bentrok alokasi ditulis dua kali dengan predikat yang sama.

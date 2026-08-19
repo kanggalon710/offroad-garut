@@ -72,10 +72,26 @@ export const users = mysqlTable(
      */
     alternativePhone: varchar("alternative_phone", { length: 20 }),
     passwordHash: varchar("password_hash", { length: 255 }),
-    role: mysqlEnum("role", ["customer", "admin", "owner"])
+    role: mysqlEnum("role", ["customer", "admin", "owner", "super_admin"])
       .notNull()
       .default("customer"),
     avatarUrl: varchar("avatar_url", { length: 1024 }),
+    /**
+     * PIN konfirmasi untuk halaman /pembaruan, di-hash dengan scrypt
+     * (src/lib/pin.ts). Hanya terisi untuk super admin.
+     */
+    updatePinHash: varchar("update_pin_hash", { length: 255 }),
+    /** Penghitung PIN salah, dipakai untuk mengunci setelah 5 percobaan. */
+    pinFailedAttempts: int("pin_failed_attempts").notNull().default(0),
+    pinLockedUntil: timestamp("pin_locked_until"),
+    /**
+     * Super admin yang baru dibuat wajib mengganti kata sandi dan PIN-nya
+     * sebelum tombol pembaruan bisa dipakai, karena nilai awalnya berasal
+     * dari environment dan mungkin sudah dilihat orang lain.
+     */
+    mustChangeCredentials: boolean("must_change_credentials")
+      .notNull()
+      .default(false),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     deletedAt: timestamp("deleted_at"),
@@ -471,7 +487,7 @@ export type Payment = typeof payments.$inferSelect;
 export type Album = typeof albums.$inferSelect;
 export type AlbumItem = typeof albumItems.$inferSelect;
 
-export type UserRole = "customer" | "admin" | "owner";
+export type UserRole = "customer" | "admin" | "owner" | "super_admin";
 export type BookingStatus =
   | "pending"
   | "awaiting_payment"

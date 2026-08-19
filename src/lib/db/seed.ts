@@ -25,9 +25,12 @@ import {
  * penyemaian di server produksi tidak memakai kata sandi yang
  * tertulis di dalam repositori.
  */
-const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL ?? "jabnetid@gmail.com";
-const ADMIN_PASSWORD = env.SEED_ADMIN_PASSWORD ?? "Galon@123";
-const ADMIN_NAME = env.SEED_ADMIN_NAME ?? "Admin Offroad";
+// Tanpa nilai cadangan. Kredensial yang ditulis di sini akan ikut ter-commit
+// ke repositori publik, dan pernah terjadi: kata sandi produksi sempat berada
+// di baris ini. Kalau variabelnya kosong, seed berhenti dengan pesan jelas.
+const ADMIN_EMAIL = env.SEED_ADMIN_EMAIL;
+const ADMIN_PASSWORD = env.SEED_ADMIN_PASSWORD;
+const ADMIN_NAME = env.SEED_ADMIN_NAME;
 
 const MEETING_POINT_NAME = "Basecamp Cikuray Adventure";
 
@@ -172,6 +175,13 @@ async function seedJeeps() {
  * dipakai saat login.
  */
 async function seedAdmin() {
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD || !ADMIN_NAME) {
+    throw new Error(
+      "SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, dan SEED_ADMIN_NAME wajib diisi. " +
+        "Tidak ada kredensial bawaan supaya tidak ada kata sandi yang ikut ter-commit.",
+    );
+  }
+
   const [existing] = await db
     .select({ id: users.id })
     .from(users)
@@ -212,11 +222,6 @@ async function seedAdmin() {
     .where(eq(users.email, ADMIN_EMAIL));
 
   console.log(`Akun pengelola dibuat: ${ADMIN_EMAIL}`);
-  if (!env.SEED_ADMIN_PASSWORD) {
-    console.log(
-      `Kata sandi bawaan: ${ADMIN_PASSWORD}. Ganti sebelum dipakai di produksi, atau setel SEED_ADMIN_PASSWORD sebelum menjalankan seed.`,
-    );
-  }
 }
 
 async function main() {

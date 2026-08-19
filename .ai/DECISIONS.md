@@ -159,3 +159,57 @@ alasan.
 ada. Keterangan foto sekaligus jadi judul dialognya lewat `Title asChild`, supaya pembaca
 layar tidak mendengar teks yang sama dua kali. Latarnya sengaja pekat penuh, bukan 95%,
 karena pada 95% isi halaman di baliknya masih terbaca dan mengganggu.
+
+## 2026-08-19 - Pembaruan dijalankan proses lepas, bukan di dalam request
+
+**Konteks:** Halaman /pembaruan harus menarik kode, memasang dependensi, build, lalu
+me-restart aplikasi. Di bawah Passenger, restart mematikan proses yang sedang melayani
+request pemicunya sendiri.
+
+**Opsi:** (a) jalankan semuanya di dalam mutasi tRPC lalu balas setelah selesai,
+(b) jalankan di dalam mutasi tapi balas lebih dulu sebelum restart, (c) lahirkan proses
+terpisah yang lepas dan biarkan halaman menjajaki berkas status.
+
+**Pilihan:** (c). `scripts/perbarui.cjs` dijalankan dengan `detached: true` lalu `unref()`,
+menulis kemajuan ke `tmp/pembaruan-status.json`.
+
+**Alasan:** opsi (a) membuat peramban menggantung menunggu jawaban yang tidak akan pernah
+datang, karena proses yang seharusnya menjawab sudah dimatikan oleh langkah terakhirnya
+sendiri. Opsi (b) memperbaiki jawabannya tapi pekerjaannya tetap ikut mati di tengah jalan
+saat restart. Hanya (c) yang membuat pekerjaan bertahan melewati restart yang ia picu
+sendiri, dan bonusnya status tetap terbaca sesudah aplikasi hidup lagi karena tersimpan di
+berkas, bukan di memori.
+
+**Konsekuensi:** halaman harus menjajaki, bukan menunggu. Kegagalan permintaan selama
+restart adalah hal normal dan tidak boleh menghentikan penjajakan. Perlu kunci berkas
+supaya dua klik tidak men-deploy bersamaan. Skripnya juga wajib CJS murni karena `tsx`
+gagal alokasi Wasm di cPanel.
+
+**Preseden:** pekerjaan yang me-restart aplikasinya sendiri tidak boleh hidup di dalam
+request. Pisahkan prosesnya dan komunikasikan lewat berkas.
+
+## 2026-08-19 - PIN buatan sendiri, bukan plugin two-factor better-auth
+
+**Konteks:** Tombol pembaruan menjalankan kode baru di server, jadi butuh konfirmasi kedua
+selain sesi yang berumur 30 hari. better-auth 1.6 sudah menyediakan plugin `two-factor`
+(TOTP plus kode cadangan) dan `username`.
+
+**Opsi:** (a) pakai plugin `two-factor`, (b) PIN 6 digit sendiri yang di-hash scrypt.
+
+**Pilihan:** (b), `src/lib/pin.ts`.
+
+**Alasan:** pemilik memakai panel ini sambil berdiri di basecamp lewat HP. TOTP menuntut
+aplikasi autentikator terpasang dan jam yang sinkron, dan kalau HP-nya hilang seluruh jalur
+deploy ikut hilang bersama kode cadangan yang entah di mana. PIN yang diingat pemiliknya
+sudah cukup untuk ancaman yang nyata di sini, yaitu sesi yang tertinggal terbuka di
+perangkat yang tidak terkunci. Pemilik juga menyebut sebagian client memang meminta PIN,
+bukan kata sandi, jadi polanya akan terpakai lagi.
+
+**Konsekuensi:** PIN 6 digit hanya satu juta kemungkinan, jadi penguncian setelah 5
+percobaan gagal jadi bagian wajib, bukan tambahan; aplikasi ini belum punya pembatas laju
+di mana pun. Konsekuensi lain: ini kredensial kedua yang harus dirawat sendiri, termasuk
+jalur menggantinya. Kalau nanti muncul kebutuhan yang lebih ketat, plugin `two-factor`
+tetap tersedia tanpa menambah dependensi.
+
+**Preseden:** memilih faktor kedua yang cocok dengan cara pemakainya bekerja, dan setiap
+rahasia pendek wajib datang bersama penguncian percobaan.

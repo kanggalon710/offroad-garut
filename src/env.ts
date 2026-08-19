@@ -29,6 +29,18 @@ export const env = createEnv({
       .string()
       .regex(/^\+62\d{8,14}$/, "Nomor owner harus format +62"),
 
+    /**
+     * Branch GitHub yang ditarik halaman /pembaruan. Sengaja dari sisi server,
+     * tidak pernah dari request, supaya tidak ada yang bisa memilih sendiri
+     * kode mana yang di-deploy.
+     */
+    UPDATE_BRANCH: z.string().min(1).default("main"),
+    /** Isi "false" untuk mematikan tombol pembaruan sepenuhnya. */
+    UPDATE_ENABLED: z
+      .enum(["true", "false"])
+      .default("true")
+      .transform((v) => v === "true"),
+
     /** Variabel untuk penyemaian data awal (hanya digunakan oleh npm run db:seed) */
     SEED_ADMIN_EMAIL: z.string().email().optional(),
     SEED_ADMIN_PASSWORD: z.string().min(1).optional(),
@@ -65,6 +77,8 @@ export const env = createEnv({
     R2_BUCKET: process.env.R2_BUCKET,
     FONNTE_TOKEN: process.env.FONNTE_TOKEN,
     OWNER_WHATSAPP: process.env.OWNER_WHATSAPP,
+    UPDATE_BRANCH: process.env.UPDATE_BRANCH,
+    UPDATE_ENABLED: process.env.UPDATE_ENABLED,
     SEED_ADMIN_EMAIL: process.env.SEED_ADMIN_EMAIL,
     SEED_ADMIN_PASSWORD: process.env.SEED_ADMIN_PASSWORD,
     SEED_ADMIN_NAME: process.env.SEED_ADMIN_NAME,

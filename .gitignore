@@ -26,3 +26,6 @@ drizzle/meta
 
 # Berkas yang diunggah pengelola saat aplikasi berjalan. Tidak boleh ikut ter-commit.
 public/uploads/
+
+# Berkas kerja fitur pembaruan (status, log, kunci, penanda restart).
+tmp/

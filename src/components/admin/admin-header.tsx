@@ -1,10 +1,19 @@
 "use client";
 
-import { Database, Image as ImageIcon, LayoutDashboard, ListChecks, LogOut } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Database,
+  Image as ImageIcon,
+  LayoutDashboard,
+  ListChecks,
+  LogOut,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import type { UserRole } from "@/lib/db/schema";
+import { isSuperAdmin } from "@/lib/roles";
 import { signOut } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -20,9 +29,22 @@ const tabs = [
   { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon, matches: ["/gallery"] },
 ];
 
-export function AdminHeader({ name }: { name: string }) {
+/** Hanya super admin yang boleh memperbarui aplikasi, jadi tabnya pun begitu. */
+const tabSuperAdmin = {
+  href: "/pembaruan",
+  label: "Pembaruan",
+  icon: ArrowDownToLine,
+  matches: ["/pembaruan"],
+};
+
+export function AdminHeader({ name, role }: { name: string; role: UserRole }) {
   const pathname = usePathname();
   const router = useRouter();
+
+  // Menyembunyikan tab bukan kontrol akses. Gerbang sebenarnya ada di
+  // superAdminProcedure dan di layout, ini hanya supaya menu tidak
+  // menawarkan halaman yang pasti ditolak.
+  const tabTampil = isSuperAdmin(role) ? [...tabs, tabSuperAdmin] : tabs;
 
   async function handleSignOut() {
     await signOut();
@@ -51,7 +73,7 @@ export function AdminHeader({ name }: { name: string }) {
         className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-4 sm:px-6"
         aria-label="Navigasi pengelola"
       >
-        {tabs.map(({ href, label, icon: Icon, matches }) => {
+        {tabTampil.map(({ href, label, icon: Icon, matches }) => {
           const active = matches.some(
             (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
           );

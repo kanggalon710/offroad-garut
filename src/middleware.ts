@@ -7,7 +7,14 @@ import { NextResponse, type NextRequest } from "next/server";
  * (src/app/(admin)/layout.tsx) karena cookie tidak memuat role.
  */
 const CUSTOMER_ROUTES = ["/booking", "/ticket"];
-const ADMIN_ROUTES = ["/dashboard", "/orders"];
+const ADMIN_ROUTES = [
+  "/dashboard",
+  "/orders",
+  "/master",
+  "/gallery",
+  "/packages",
+  "/pembaruan",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -33,5 +40,14 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/booking/:path*", "/ticket/:path*", "/dashboard/:path*", "/orders/:path*"],
+  matcher: [
+    "/booking/:path*",
+    "/ticket/:path*",
+    "/dashboard/:path*",
+    "/orders/:path*",
+    "/master/:path*",
+    "/gallery/:path*",
+    "/packages/:path*",
+    "/pembaruan/:path*",
+  ],
 };
