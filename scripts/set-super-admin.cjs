@@ -18,6 +18,8 @@
  *   node scripts/set-super-admin.cjs
  */
 const { randomBytes, scrypt } = require("node:crypto");
+const http = require("node:http");
+const https = require("node:https");
 const path = require("node:path");
 const { promisify } = require("node:util");
 const mysql = require("mysql2/promise");
@@ -73,22 +75,61 @@ function bacaAkun() {
   return akun;
 }
 
+/**
+ * POST JSON memakai node:http/https, BUKAN fetch.
+ *
+ * Node 22 menjalankan parser HTTP undici sebagai WebAssembly, dan di cPanel
+ * instansiasinya gagal dengan "Cannot allocate Wasm memory for new instance"
+ * karena ruang alamat akun dibatasi. Modul http bawaan tidak memakai
+ * WebAssembly sama sekali, jadi ia tetap bekerja di sana.
+ */
+function kirimJson(url, muatan, headerTambahan) {
+  return new Promise((resolve, reject) => {
+    const alamat = new URL(url);
+    const badan = Buffer.from(JSON.stringify(muatan));
+    const modul = alamat.protocol === "https:" ? https : http;
+
+    const req = modul.request(
+      {
+        hostname: alamat.hostname,
+        port: alamat.port || (alamat.protocol === "https:" ? 443 : 80),
+        path: alamat.pathname + alamat.search,
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Content-Length": badan.length,
+          ...headerTambahan,
+        },
+      },
+      (res) => {
+        let isi = "";
+        res.on("data", (potongan) => (isi += potongan));
+        res.on("end", () => resolve({ status: res.statusCode ?? 0, isi }));
+      },
+    );
+
+    req.on("error", reject);
+    req.write(badan);
+    req.end();
+  });
+}
+
 async function daftarkan(baseUrl, akun) {
   const asal = baseUrl.replace(/\/$/, "");
-  const res = await fetch(`${asal}/api/auth/sign-up/email`, {
-    method: "POST",
-    // better-auth menolak permintaan tanpa Origin sebagai perlindungan CSRF.
-    // Skrip ini memanggil aplikasinya sendiri, jadi asalnya memang asal itu.
-    headers: { "Content-Type": "application/json", Origin: asal },
-    body: JSON.stringify({
+  // better-auth menolak permintaan tanpa Origin sebagai perlindungan CSRF.
+  // Skrip ini memanggil aplikasinya sendiri, jadi asalnya memang asal itu.
+  const { status, isi } = await kirimJson(
+    `${asal}/api/auth/sign-up/email`,
+    {
       email: akun.email,
       password: akun.password,
       name: akun.email.split("@")[0],
-    }),
-  });
-  if (!res.ok) {
-    const teks = await res.text();
-    throw new Error(`Pendaftaran ${akun.email} ditolak (${res.status}): ${teks.slice(0, 200)}`);
+    },
+    { Origin: asal },
+  );
+
+  if (status < 200 || status >= 300) {
+    throw new Error(`Pendaftaran ${akun.email} ditolak (${status}): ${isi.slice(0, 200)}`);
   }
 }
 
