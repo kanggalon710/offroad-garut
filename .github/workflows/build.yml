@@ -43,6 +43,13 @@ jobs:
       - name: Tes
         # Tes penerimaan butuh database ter-seed yang tidak ada di CI, jadi yang
         # dijalankan hanya yang murni logika.
+        #
+        # src/test/setup.ts sengaja melempar error kalau DATABASE_URL kosong,
+        # dan berkas itu berjalan untuk SETIAP tes. Nilai boneka di bawah cuma
+        # untuk melewati penjaga itu; ketiga tes ini tidak pernah membuka
+        # koneksi.
+        env:
+          DATABASE_URL: mysql://ci:ci@127.0.0.1:3306/ci_tidak_dipakai
         run: npx vitest run src/test/pin.test.ts src/test/roles.test.ts src/test/db-errors.test.ts
 
       - name: Tentukan nilai yang ditanam saat build
