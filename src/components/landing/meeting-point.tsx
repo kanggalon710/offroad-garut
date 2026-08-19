@@ -40,8 +40,8 @@ export function MeetingPoint() {
             <Card className="overflow-hidden">
               <div className="relative aspect-[4/3] w-full bg-muted">
                 <Image
-                  src="/images/basecamp-garut.jpg"
-                  alt="Halaman basecamp dengan Jeep berjajar dan peralatan keselamatan tersusun di bangku"
+                  src="/images/real_img/base_camp_full.webp"
+                  alt="Rombongan tamu berkaus merah berkumpul di halaman basecamp beratap ilalang dengan latar pegunungan"
                   fill
                   loading="lazy"
                   sizes="(max-width: 1024px) 100vw, 40vw"

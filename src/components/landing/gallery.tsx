@@ -17,9 +17,9 @@ const FALLBACK_SHOTS = [
     className: "sm:col-span-2",
   },
   {
-    src: "/images/rombongan-viewpoint.jpg",
-    alt: "Rombongan enam orang berfoto bersama driver di depan Jeep berlumur lumpur",
-    caption: "Rombongan Sabtu bersama Pak Asep",
+    src: "/images/real_img/drone_fif.webp",
+    alt: "Foto udara belasan Jeep terparkir berjajar di lapangan dengan rombongan peserta berkaus merah di sekitarnya",
+    caption: "Rombongan FiF",
     className: "",
   },
   {
