@@ -16,14 +16,23 @@ export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
 
   /**
-   * Di produksi hanya domain aplikasi yang dipercaya. Saat pengembangan
-   * `next dev` sering berpindah port kalau 3000 sedang dipakai, dan
-   * origin yang tidak cocok membuat setiap permintaan auth ditolak.
+   * URL aplikasi sendiri SELALU dipercaya, di lingkungan apa pun.
+   *
+   * Sebelumnya ia hanya masuk daftar saat NODE_ENV production, dan itu
+   * mematikan login di server dev cPanel: Application mode "Development" di
+   * Node.js Selector menyetel NODE_ENV=development pada domain sungguhan,
+   * sehingga yang dipercaya justru cuma localhost dan setiap permintaan auth
+   * dari dev.garutoffroad.com ditolak.
+   *
+   * Localhost hanya ditambahkan di luar produksi, karena `next dev` sering
+   * berpindah port kalau 3000 sedang dipakai.
    */
-  trustedOrigins:
-    env.NODE_ENV === "production"
-      ? [env.BETTER_AUTH_URL]
-      : ["http://localhost:*", "http://127.0.0.1:*"],
+  trustedOrigins: [
+    env.BETTER_AUTH_URL,
+    ...(env.NODE_ENV === "production"
+      ? []
+      : ["http://localhost:*", "http://127.0.0.1:*"]),
+  ],
 
   database: drizzleAdapter(db, {
     provider: "mysql",

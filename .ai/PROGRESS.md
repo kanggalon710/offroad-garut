@@ -1,3 +1,14 @@
+## 2026-08-19 - Dua aplikasi cPanel: origin tepercaya dan jalur deploy
+**Agen:** claude | **Status:** selesai
+**Kenapa:** Pemilik memakai dua aplikasi Node di akun cPanel yang sama, `offroad-garut` untuk produksi dan `offroad-garut-dev` untuk pengujian, dengan Application mode Production dan Development. Dua hal jadi salah karena itu.
+**Perubahan:**
+- `src/lib/auth.ts`: `BETTER_AUTH_URL` sekarang selalu masuk `trustedOrigins`, di lingkungan apa pun. Sebelumnya ia hanya masuk saat `NODE_ENV === "production"`, sedangkan Application mode "Development" di Node.js Selector menyetel `NODE_ENV=development` pada domain sungguhan. Akibatnya yang dipercaya cuma localhost dan setiap permintaan auth dari dev.garutoffroad.com akan ditolak `INVALID_ORIGIN`, artinya tidak ada yang bisa login di server dev.
+- `.cpanel/deploy.sh`, `.cpanel/auto-deploy-check.sh`, dan `.cpanel.yml`: jalur virtualenv dan penanda restart diturunkan dari letak skripnya, bukan ditulis tetap. Versi lama menuliskan jalur produksi apa adanya, jadi deploy di aplikasi dev akan mengaktifkan virtualenv produksi dan `touch ~/nodejs/offroad-garut/restart.txt` justru me-restart aplikasi produksi.
+- `.cpanel.yml` sekarang memanggil satu skrip, karena tiap baris `tasks` dijalankan di shell terpisah sehingga `source ... activate` tidak pernah ikut ke baris berikutnya.
+- `auto-deploy-check.sh` membaca branch dari `UPDATE_BRANCH` dan menolak yang bukan fast forward, sejalan dengan mesin di `scripts/perbarui.cjs`.
+**File:** src/lib/auth.ts, .cpanel/deploy.sh, .cpanel/auto-deploy-check.sh, .cpanel.yml
+**Catatan:** Perbaikan origin diuji dengan meniru kondisi aplikasi dev, yaitu `NODE_ENV=development` dengan `BETTER_AUTH_URL` berupa domain sungguhan: permintaan dari domain itu lolos sampai pemeriksaan kredensial, sementara Origin asing tetap ditolak `INVALID_ORIGIN`, jadi perlindungannya tidak ikut longgar.
+
 ## 2026-08-19 - Halaman pembaruan aplikasi untuk super admin
 **Agen:** claude | **Status:** selesai
 **Kenapa:** Setiap rilis menuntut pemilik membuka cPanel, masuk Git Version Control atau Terminal, pull, build, lalu restart. Bagian 14 standar global yang baru mewajibkan aplikasi cPanel yang sumbernya di GitHub punya halaman update sendiri, dan project ini penerapan pertamanya.

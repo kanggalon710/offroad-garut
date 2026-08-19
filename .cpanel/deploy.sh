@@ -1,25 +1,39 @@
 #!/bin/bash
-# .cpanel/deploy.sh - Runs automatically after cPanel Git Version Control pull
-# Sources the Node.js virtual environment from cPanel Node.js Selector
+# Dijalankan otomatis sesudah cPanel Git Version Control menarik perubahan.
+#
+# Jalurnya diturunkan dari letak skrip ini, bukan ditulis tetap. Ada dua
+# aplikasi Node di akun yang sama (offroad-garut untuk produksi dan
+# offroad-garut-dev untuk pengujian), dan versi lama skrip ini menuliskan
+# jalur produksi apa adanya. Akibatnya deploy di aplikasi dev mengaktifkan
+# virtualenv produksi dan me-restart aplikasi produksi.
 
 set -e
 
-# Activate cPanel Node.js virtual environment
-source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
+AKAR="$(cd "$(dirname "$0")/.." && pwd)"
+NAMA_APP="$(basename "$AKAR")"
+AKTIVATOR="$HOME/nodevenv/repositories/$NAMA_APP/22/bin/activate"
 
-echo "🚀 Starting deployment..."
+cd "$AKAR"
 
-# 1. Install/update dependencies (production only)
+if [ -f "$AKTIVATOR" ]; then
+  # shellcheck source=/dev/null
+  source "$AKTIVATOR"
+else
+  echo "Peringatan: $AKTIVATOR tidak ada, memakai node yang ada di PATH."
+fi
+
+echo "Deploy $NAMA_APP dari $AKAR"
+
 npm ci --omit=dev
 
-# 2. Build the Next.js app
-# cPanel shared hosting RLIMIT_AS ~1.5GB. Heap 1024 terlalu besar, SWC Wasm ke-trigger OOM.
-# Turunkan heap dan batasi semi-space agar Wasm.instantiate tidak gagal.
+# cPanel shared hosting RLIMIT_AS ketat. Heap 1024 terlalu besar, SWC Wasm
+# kena OOM. Turunkan heap dan batasi semi-space.
 export NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64"
 export NEXT_TELEMETRY_DISABLED=1
 npx next build
 
-# 3. Restart the Node.js app via cPanel's API
-touch ~/nodejs/offroad-garut/restart.txt
+# Penanda restart Passenger, relatif ke aplikasi ini saja.
+mkdir -p "$AKAR/tmp"
+touch "$AKAR/tmp/restart.txt" "$AKAR/restart.txt"
 
-echo "✅ Deployment complete. App will restart automatically."
+echo "Selesai. $NAMA_APP akan restart sendiri."

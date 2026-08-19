@@ -1,9 +1,8 @@
 ---
 deployment:
   tasks:
-    - source /home/jabnet/nodevenv/repositories/offroad-garut/22/bin/activate
-    - npm ci --omit=dev
-    - export NODE_OPTIONS="--max-old-space-size=768 --max-semi-space-size=64" && export NEXT_TELEMETRY_DISABLED=1 && npx next build
-    - mkdir -p tmp
-    - touch tmp/restart.txt
-    - touch restart.txt
+    # Setiap baris di sini dijalankan sebagai shell terpisah, jadi `source`
+    # tidak ikut ke baris berikutnya. Karena itu seluruh langkahnya ditaruh
+    # di satu skrip yang menurunkan jalurnya sendiri, supaya sama benarnya
+    # untuk aplikasi produksi maupun dev.
+    - bash .cpanel/deploy.sh
