@@ -117,7 +117,7 @@ function sentuhPenandaRestart() {
 }
 
 async function bangunUlang() {
-  await jalankan("npm", ["ci", "--omit=dev"]);
+  await jalankan("npm", ["ci", "--omit=dev", "--include=optional"]);
   await jalankan("npx", ["next", "build"]);
 }
 
@@ -217,7 +217,7 @@ async function main() {
     tandai("tarik-kode");
 
     tulisStatus({ langkah: "pasang-dependensi" });
-    await jalankan("npm", ["ci", "--omit=dev"]);
+    await jalankan("npm", ["ci", "--omit=dev", "--include=optional"]);
     tandai("pasang-dependensi");
 
     tulisStatus({ langkah: "build" });
