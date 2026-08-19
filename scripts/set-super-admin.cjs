@@ -100,6 +100,12 @@ function kirimJson(url, muatan, headerTambahan) {
           "Content-Length": badan.length,
           ...headerTambahan,
         },
+        // Server yang sertifikatnya belum terpasang (domain dev baru, atau
+        // sertifikat bawaan hosting) membuat panggilan ini gagal dengan
+        // "self signed certificate". Karena skrip ini memanggil aplikasinya
+        // sendiri di mesin yang sama, verifikasi boleh dilewati, tapi HARUS
+        // diminta eksplisit supaya tidak diam-diam jadi kebiasaan.
+        rejectUnauthorized: process.env.SUPER_ADMIN_ABAIKAN_SERTIFIKAT !== "1",
       },
       (res) => {
         let isi = "";
@@ -108,7 +114,22 @@ function kirimJson(url, muatan, headerTambahan) {
       },
     );
 
-    req.on("error", reject);
+    req.on("error", (e) => {
+      if (
+        /self.signed|unable to verify|CERT_|DEPTH_ZERO/i.test(e.message) &&
+        process.env.SUPER_ADMIN_ABAIKAN_SERTIFIKAT !== "1"
+      ) {
+        reject(
+          new Error(
+            `Sertifikat ${alamat.hostname} tidak tepercaya (${e.message}). ` +
+              "Kalau ini memang aplikasi Anda sendiri di mesin yang sama, ulangi dengan " +
+              "SUPER_ADMIN_ABAIKAN_SERTIFIKAT=1 di depan perintahnya.",
+          ),
+        );
+        return;
+      }
+      reject(e);
+    });
     req.write(badan);
     req.end();
   });
