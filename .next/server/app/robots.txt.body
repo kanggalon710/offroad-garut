@@ -1,0 +1,20 @@
+User-Agent: *
+Allow: /
+Disallow: /booking/
+Disallow: /ticket/
+Disallow: /dashboard/
+Disallow: /orders/
+Disallow: /master/
+Disallow: /gallery/
+Disallow: /packages/
+Disallow: /pembaruan/
+Disallow: /seo/
+Disallow: /laporan/
+Disallow: /masuk/
+Disallow: /admin/
+Disallow: /pengaturan/
+Disallow: /pesanan-saya/
+Disallow: /api/
+
+Host: https://dev.garutoffroad.com/
+Sitemap: https://dev.garutoffroad.com/sitemap.xml
