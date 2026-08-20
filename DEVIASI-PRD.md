@@ -117,3 +117,38 @@ Catatan terkait: `loading.tsx` sengaja hanya dipasang di grup `(beranda)`.
 Ketika sebelumnya diletakkan di `(public)`, seluruh rute anaknya ikut dialirkan
 dan `notFound()` berubah menjadi balasan 200 berisi skeleton, yaitu soft 404
 yang merugikan SEO.
+
+## 12. Kolom `pricing_unit` dan `unit_price_idr` untuk layanan tambahan
+
+PRD merancang `add_on_services` dengan satu kolom harga saja, dan
+`booking_add_ons` hanya menyimpan `add_on_id` beserta `quantity`. Dua kolom
+ditambahkan di luar rancangan itu.
+
+`add_on_services.pricing_unit` (`per_pax` atau `per_booking`) ditambahkan
+karena operator offroad di lapangan menjual dua jenis layanan tambahan sekaligus:
+per orang (nasi liwet, snack) dan per rombongan (drone, fotografer, fun game).
+Dengan satu kolom harga tanpa satuan, jumlahnya harus diisi tamu, dan rombongan
+sepuluh orang yang lupa menaikkan angka hanya membayar satu porsi nasi liwet.
+Kesalahan itu tidak terdeteksi sistem mana pun, baru ketahuan saat makanannya
+kurang di basecamp. Setelah kolom ini ada, jumlahnya diturunkan server dan
+`quantity` tidak lagi diterima dari peramban sama sekali.
+
+`booking_add_ons.unit_price_idr` menyimpan harga satuan saat pesanan dibuat.
+Tanpa itu, pemilik yang menyesuaikan tarif akan diam-diam mengubah angka pada
+e-ticket pesanan lama, sementara Midtrans sudah menagih angka yang lama.
+Alasannya sama dengan `bookings.contact_name` dan `contact_phone` di deviasi
+nomor 5: yang sudah ditagih tidak boleh berubah karena data induknya diedit.
+
+## 13. Data terstruktur, sitemap, dan robots
+
+PRD §2 menekankan SEO sebagai alasan memilih React Server Components, tetapi
+tidak merinci apa pun di luar itu. Ditambahkan `src/app/sitemap.ts`,
+`src/app/robots.ts`, canonical di setiap halaman publik, dan data terstruktur
+schema.org (`TouristInformationCenter`, `WebSite`, `FAQPage`, `Product` dengan
+`Offer`, `BreadcrumbList`).
+
+Alasannya: usaha ini punya alamat fisik, jam operasional, dan daftar harga, dan
+untuk usaha wisata daerah hasil pencarian lokal Google adalah sumber pelanggan
+utama. Semuanya sudah ada di kode sebagai teks biasa dan tidak satu pun terbaca
+mesin pencari sebagai data. Aturan lengkapnya kini ada di bagian 7 standar
+pengembangan global.

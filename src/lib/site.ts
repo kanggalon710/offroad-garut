@@ -15,4 +15,13 @@ export const site = {
     lng: 107.7891,
   },
   operationalHours: "Setiap hari, 06.00 - 17.00 WIB",
+  /** Rentang harga untuk data terstruktur, mengikuti paket termurah dan termahal. */
+  priceRange: "Rp150.000 - Rp350.000",
+  /**
+   * Profil resmi lain milik usaha ini. Dipakai schema.org untuk
+   * menghubungkan situs dengan Google Business Profile dan media sosial.
+   * Dibiarkan kosong sampai tautannya dipastikan: mengarang URL di sini
+   * justru membuat Google meragukan identitas usahanya.
+   */
+  sameAs: [] as string[],
 } as const;

@@ -1,9 +1,15 @@
+import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/lib/auth";
 import { getServerApi } from "@/server/caller";
 import { PengaturanClient } from "./client";
+
+export const metadata: Metadata = {
+  title: "Pengaturan akun",
+  robots: { index: false },
+};
 
 export default async function PengaturanPage() {
   const session = await auth.api.getSession({ headers: await headers() });

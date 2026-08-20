@@ -8,10 +8,18 @@ import { TRPCError } from "@trpc/server";
 import { MeetingMapLoader } from "@/components/domain/meeting-map-loader";
 import { PackageGalleryCarousel } from "@/components/domain/package-gallery-carousel";
 import { Container } from "@/components/shared/container";
+import { JsonLd } from "@/components/shared/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { SLUG_PAKET_DUMMY } from "@/lib/constants";
 import { catatKegagalanDatabase } from "@/lib/db/errors";
+import {
+  canonical,
+  paketJsonLd,
+  remahRotiJsonLd,
+  urlPenuh,
+} from "@/lib/seo";
 import { site } from "@/lib/site";
 import { formatIDR } from "@/lib/utils";
 import { getServerApi } from "@/server/caller";
@@ -27,7 +35,8 @@ const included = [
 ];
 
 const notIncluded = [
-  "Makan dan minum di luar rute",
+  "Makan dan minum di luar rute (bisa ditambahkan saat memesan)",
+  "Dokumentasi drone dan fotografer (bisa ditambahkan saat memesan)",
   "Tiket masuk objek wisata tertentu",
   "Tip untuk driver (sukarela)",
 ];
@@ -61,11 +70,28 @@ export async function generateMetadata({
   const pkg = await loadPackage(slug);
   if (!pkg) return { title: "Paket tidak ditemukan" };
 
+  const deskripsi =
+    pkg.description ??
+    `Paket offroad ${pkg.name} di Garut, mulai ${formatIDR(pkg.pricePerPaxIdr)} per orang.`;
+  const gambar = pkg.images[0]?.imageUrl ?? FALLBACK_IMAGE;
+
+  // Paket percobaan tidak boleh terindeks. Mengeluarkannya dari sitemap
+  // saja tidak cukup, karena perayap sampai ke sini lewat tautan.
+  if (pkg.slug === SLUG_PAKET_DUMMY) {
+    return { title: pkg.name, robots: { index: false, follow: false } };
+  }
+
   return {
     title: pkg.name,
-    description:
-      pkg.description ??
-      `Paket offroad ${pkg.name} di Garut, mulai ${formatIDR(pkg.pricePerPaxIdr)} per orang.`,
+    description: deskripsi,
+    alternates: canonical(`/paket/${pkg.slug}`),
+    openGraph: {
+      type: "website",
+      url: urlPenuh(`/paket/${pkg.slug}`),
+      title: pkg.name,
+      description: deskripsi,
+      images: [{ url: gambar, alt: pkg.images[0]?.alt ?? pkg.name }],
+    },
   };
 }
 
@@ -77,6 +103,17 @@ export default async function PackageDetailPage({ params }: PageProps) {
 
   return (
     <>
+      {/* Harga di Product dibaca dari paket yang sama dengan yang dirender
+          di bawah, jadi tidak bisa berbeda dari angka yang dilihat tamu. */}
+      <JsonLd data={paketJsonLd(pkg)} />
+      <JsonLd
+        data={remahRotiJsonLd([
+          { name: "Beranda", path: "/" },
+          { name: "Paket", path: "/#paket" },
+          { name: pkg.name, path: `/paket/${pkg.slug}` },
+        ])}
+      />
+
       <Container className="pt-8">
         <nav aria-label="Remah roti" className="text-meta text-muted-foreground">
           <Link href="/" className="hover:text-primary">

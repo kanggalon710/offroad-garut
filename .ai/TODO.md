@@ -11,6 +11,31 @@ pemilik project.
 
 ## Prioritas tinggi
 
+- [x] 2026-08-20 **Add-on bisa dipilih pelanggan saat memesan.** Punggungnya sudah ada
+      sejak migrasi `0002` tapi tidak ada pilihannya di form. Ditambah satuan harga
+      (`per_pax` / `per_booking`) dan snapshot `unit_price_idr`.
+
+- [x] 2026-08-20 **SEO dasar: sitemap, robots, canonical, dan data terstruktur.**
+      LocalBusiness, WebSite, FAQPage, Product dengan Offer, dan BreadcrumbList.
+
+- [ ] **Isi daftar add-on di Master Data produksi.** Sengaja dibiarkan kosong atas
+      permintaan pemilik. Sampai diisi, seksi layanan tambahan tidak muncul di form
+      pemesanan sama sekali. Contoh yang lazim dijual operator sudah ditulis di layar
+      kosong halaman Master Data.
+
+- [ ] **Daftarkan situs ke Google Search Console dan kirim sitemap.**
+      `https://garutoffroad.com/sitemap.xml`. Tanpa langkah ini data terstruktur yang
+      baru dipasang tidak akan terpakai secepat yang bisa.
+
+- [ ] **Isi `site.sameAs` di `src/lib/site.ts`** dengan tautan Google Business Profile
+      dan Instagram kalau ada. Sengaja dikosongkan, bukan diisi tebakan: URL karangan di
+      data terstruktur justru membuat Google meragukan identitas usahanya.
+
+- [ ] **Sediakan gambar Open Graph khusus berukuran 1200x630.** Sekarang memakai
+      `hero-offroad-garut.jpg` dengan dimensi yang dideklarasikan 1200x630, padahal
+      rasio aslinya belum tentu sama, jadi pratinjau tautan bisa terpotong.
+
+
 - [x] 2026-08-15 **Fitur Galeri & Album (Patreon-Style Secret Album Pages)**
       Menambahkan manajemen galeri/album untuk admin di `/gallery` dan halaman album publik/privat di `/album/[slug]`.
       Mendukung foto (auto WebP compress via `sharp`), video YouTube, PDF, dan link Google Drive.

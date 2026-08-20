@@ -57,6 +57,23 @@ const titikKumpul: MeetingPointOption[] = [
   },
 ];
 
+const layananTambahan = [
+  {
+    id: "6f1b2c3d-4e5f-4a6b-8c9d-0e1f2a3b4c5d",
+    name: "Nasi liwet Sunda",
+    description: "Nasi liwet lengkap dengan ayam bakar dan lalapan.",
+    priceIdr: 45_000,
+    pricingUnit: "per_pax" as const,
+  },
+  {
+    id: "7a2c3d4e-5f6a-4b7c-8d9e-1f2a3b4c5d6e",
+    name: "Dokumentasi drone",
+    description: "Rekaman udara sepanjang rute.",
+    priceIdr: 350_000,
+    pricingUnit: "per_booking" as const,
+  },
+];
+
 beforeAll(() => {
   // Radix Popper memakai ResizeObserver yang belum ada di jsdom.
   if (!("ResizeObserver" in globalThis)) {
@@ -84,6 +101,7 @@ function tampilkan() {
       <BookingForm
         packages={paket}
         meetingPoints={titikKumpul}
+        addOns={layananTambahan}
         initialSlug="trek-kebun-teh-cikajang"
         defaultName="Budi Santoso"
         defaultPhone="0812 3456 7890"
@@ -217,5 +235,52 @@ describe("form booking", () => {
     expect(
       screen.getByRole("button", { name: /lanjut ke pembayaran/i }),
     ).toBeDisabled();
+  });
+});
+
+describe("layanan tambahan di form booking", () => {
+  it("mencentang add-on per rombongan menambah total sekali saja", async () => {
+    const user = userEvent.setup();
+    tampilkan();
+
+    // Paket trek kebun teh: Rp 150.000 x 3 orang
+    expect(totalBayar()).toBe("Rp 450.000");
+
+    await user.click(screen.getByLabelText(/dokumentasi drone/i));
+
+    // 450.000 + 350.000. Per rombongan, jadi TIDAK dikali jumlah orang.
+    expect(totalBayar()).toBe("Rp 800.000");
+  });
+
+  it("add-on per orang ikut naik saat jumlah orang ditambah", async () => {
+    const user = userEvent.setup();
+    tampilkan();
+
+    await user.click(screen.getByLabelText(/nasi liwet/i));
+    // 3 orang: 450.000 + (45.000 x 3)
+    expect(totalBayar()).toBe("Rp 585.000");
+
+    await user.click(screen.getByRole("button", { name: /tambah satu orang/i }));
+    // 4 orang: 600.000 + (45.000 x 4)
+    expect(totalBayar()).toBe("Rp 780.000");
+  });
+
+  it("melepas centang mengembalikan total ke harga paket saja", async () => {
+    const user = userEvent.setup();
+    tampilkan();
+
+    const drone = screen.getByLabelText(/dokumentasi drone/i);
+    await user.click(drone);
+    await user.click(drone);
+
+    expect(totalBayar()).toBe("Rp 450.000");
+  });
+
+  it("menampilkan perkalian per orang supaya angkanya bisa ditelusuri tamu", async () => {
+    const user = userEvent.setup();
+    tampilkan();
+
+    await user.click(screen.getByLabelText(/nasi liwet/i));
+    expect(screen.getAllByText(/Rp 45\.000 x 3 orang/).length).toBeGreaterThan(0);
   });
 });

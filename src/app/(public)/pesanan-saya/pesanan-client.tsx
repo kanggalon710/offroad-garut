@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Calendar, ChevronRight, CheckCircle2, Clock, Loader2, Ticket, Users, XCircle } from "lucide-react";
+import { AlertCircle, Calendar, ChevronRight, CheckCircle2, Clock, Loader2, Sparkles, Ticket, Users, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -141,7 +141,7 @@ export function PesananSayaClient() {
         </Card>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2">
-          {filtered.map(({ booking, packageName }) => {
+          {filtered.map(({ booking, packageName, addOnNames }) => {
             const status = {
               tone: BOOKING_STATUS_TONE[booking.status] ?? ("neutral" as const),
               label: BOOKING_STATUS_LABEL[booking.status] ?? booking.status,
@@ -188,6 +188,16 @@ export function PesananSayaClient() {
                         <span>{booking.paxCount} Orang</span>
                       </div>
                     </div>
+
+                    {addOnNames.length > 0 ? (
+                      <p className="mt-3 flex items-start gap-2 text-small text-muted-foreground">
+                        <Sparkles
+                          className="mt-0.5 size-4 shrink-0"
+                          aria-hidden="true"
+                        />
+                        <span>{addOnNames.join(", ")}</span>
+                      </p>
+                    ) : null}
 
                     {/* Footer */}
                     <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">

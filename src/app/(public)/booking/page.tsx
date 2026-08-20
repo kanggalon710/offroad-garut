@@ -34,6 +34,7 @@ export default async function BookingPage({ searchParams }: PageProps) {
   let packages: Awaited<ReturnType<typeof loadOptions>>["packages"] = [];
   let meetingPoints: Awaited<ReturnType<typeof loadOptions>>["meetingPoints"] =
     [];
+  let addOns: Awaited<ReturnType<typeof loadOptions>>["addOns"] = [];
   let loadFailed = false;
 
   let petunjukPengembang: string | null = null;
@@ -42,6 +43,7 @@ export default async function BookingPage({ searchParams }: PageProps) {
     const options = await loadOptions();
     packages = options.packages;
     meetingPoints = options.meetingPoints;
+    addOns = options.addOns;
   } catch (error) {
     const diagnosis = catatKegagalanDatabase("booking", error);
     loadFailed = true;
@@ -91,6 +93,7 @@ export default async function BookingPage({ searchParams }: PageProps) {
             <BookingForm
               packages={packages}
               meetingPoints={meetingPoints}
+              addOns={addOns}
               initialSlug={paket}
               defaultName={session.user.name ?? ""}
               defaultPhone={userPhone}
@@ -104,9 +107,10 @@ export default async function BookingPage({ searchParams }: PageProps) {
 
 async function loadOptions() {
   const api = await getServerApi();
-  const [rawPackages, rawMeetingPoints] = await Promise.all([
+  const [rawPackages, rawMeetingPoints, rawAddOns] = await Promise.all([
     api.booking.getPackages({ limit: 20 }),
     api.booking.getMeetingPoints(),
+    api.booking.getAddOnServices(),
   ]);
 
   return {
@@ -122,6 +126,16 @@ async function loadOptions() {
       id: point.id,
       name: point.name,
       address: point.address,
+    })),
+    // Diambil di server bersama paket dan titik kumpul, bukan lewat query
+    // dari peramban: daftar yang muncul belakangan menggeser layout form
+    // tepat saat pengguna sedang mengisinya.
+    addOns: rawAddOns.map((addOn) => ({
+      id: addOn.id,
+      name: addOn.name,
+      description: addOn.description,
+      priceIdr: addOn.priceIdr,
+      pricingUnit: addOn.pricingUnit,
     })),
   };
 }

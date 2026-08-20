@@ -294,6 +294,15 @@ export const addOnServices = mysqlTable(
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description"),
     priceIdr: int("price_idr").notNull(),
+    /**
+     * Menentukan bagaimana priceIdr dikalikan. "per_pax" mengikuti jumlah
+     * peserta (nasi liwet, snack), "per_booking" dihitung sekali untuk
+     * seluruh rombongan (drone, fotografer). Jumlahnya tidak pernah
+     * diterima dari peramban, selalu diturunkan di server.
+     */
+    pricingUnit: mysqlEnum("pricing_unit", ["per_pax", "per_booking"])
+      .notNull()
+      .default("per_booking"),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -314,6 +323,13 @@ export const bookingAddOns = mysqlTable(
       .notNull()
       .references(() => addOnServices.id, { onDelete: "restrict" }),
     quantity: int("quantity").notNull().default(1),
+    /**
+     * Snapshot harga satuan saat pesanan dibuat. Alasannya sama dengan
+     * contactName dan contactPhone di tabel bookings: harga yang sudah
+     * ditagih Midtrans tidak boleh berubah kalau pemilik mengedit tarif
+     * add-on di kemudian hari.
+     */
+    unitPriceIdr: int("unit_price_idr").notNull().default(0),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (table) => [
@@ -484,6 +500,9 @@ export type MeetingPoint = typeof meetingPoints.$inferSelect;
 export type Jeep = typeof jeeps.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type AddOnService = typeof addOnServices.$inferSelect;
+export type BookingAddOn = typeof bookingAddOns.$inferSelect;
+export type AddOnPricingUnit = AddOnService["pricingUnit"];
 export type Album = typeof albums.$inferSelect;
 export type AlbumItem = typeof albumItems.$inferSelect;
 

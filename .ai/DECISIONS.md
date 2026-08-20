@@ -11,6 +11,72 @@ kutipan PRD, masalah, dan tindakan.
 
 ---
 
+## 2026-08-20 - Jumlah add-on dihitung server, satuannya masuk skema
+
+**Konteks.** Riset operator offroad di Garut, Pangalengan, Lembang, dan Sentul
+menunjukkan add-on dijual dengan dua satuan: per orang (nasi liwet, snack) dan per
+rombongan (drone, fotografer, fun game). Skema lama cuma punya `price_idr` tanpa satuan,
+dan `quantity` diisi peramban.
+
+**Opsi.** (1) Biarkan satu satuan, tamu mengatur jumlahnya sendiri dengan tombol
+plus-minus. (2) Tambah kolom `pricing_unit`, jumlahnya diturunkan server. (3) Hanya per
+rombongan, centang hidup-mati.
+
+**Pilihan.** Opsi 2, dan `quantity` dihapus sepenuhnya dari input tRPC.
+
+**Alasan.** Opsi 1 punya lubang diam: rombongan 10 orang yang lupa menaikkan jumlah nasi
+liwet hanya membayar satu porsi, dan tidak ada yang sadar sampai makanannya kurang di
+lapangan. Opsi 3 tidak bisa menjual makanan sama sekali, padahal itu yang paling laris
+untuk rombongan kantor. Soal `quantity`, memvalidasinya masih menyisakan pertanyaan
+"validasi terhadap apa"; menghapusnya dari input membuat pemalsuan mustahil, bukan
+sekadar terdeteksi, sesuai bagian keamanan standar global yang melarang mempercayai
+jumlah dari client.
+
+**Konsekuensi.** Tamu tidak bisa memesan dua sesi drone dalam satu pesanan. Kalau nanti
+dibutuhkan, jalannya adalah menambah satuan ketiga, bukan mengembalikan `quantity` ke
+input. Perhitungannya hidup di satu helper (`src/lib/add-on.ts`) yang dipakai peramban
+dan server sekaligus, jadi angka di layar dan angka di tagihan tidak bisa berbeda.
+
+---
+
+## 2026-08-20 - Harga add-on disnapshot di baris pesanan
+
+**Konteks.** `booking_add_ons` semula hanya menyimpan `add_on_id` dan `quantity`, jadi
+harganya selalu dibaca ulang dari `add_on_services`.
+
+**Opsi.** (1) Tetap membaca tarif yang berlaku. (2) Simpan `unit_price_idr` saat pesanan
+dibuat.
+
+**Pilihan.** Opsi 2.
+
+**Alasan.** Pemilik yang menaikkan harga drone bulan depan akan diam-diam mengubah angka
+di e-ticket pesanan lama, padahal Midtrans sudah menagih angka yang lama. Selisih
+semacam itu baru ketahuan saat pelanggan protes sambil menunjukkan tiketnya. Alasannya
+sama persis dengan `contact_name` dan `contact_phone` yang sudah jadi snapshot di tabel
+`bookings` (deviasi PRD nomor 5).
+
+**Konsekuensi.** Mengubah harga add-on tidak lagi memperbaiki pesanan lama yang salah
+harga. Kalau itu memang diinginkan, harus lewat koreksi eksplisit per pesanan.
+
+---
+
+## 2026-08-20 - Rute privat jadi satu sumber untuk middleware dan robots
+
+**Konteks.** Daftar rute pengelola dibutuhkan di dua tempat: gerbang cookie di edge dan
+larangan di `robots.txt`.
+
+**Opsi.** (1) Tulis di masing-masing. (2) Satu modul bersama plus tes yang mencocokkan.
+
+**Pilihan.** Opsi 2, `src/lib/rute-privat.ts`.
+
+**Alasan.** Kalau ditulis dua kali, rute baru akan masuk ke middleware (karena tanpa itu
+halamannya jelas bocor) tapi lupa masuk robots (karena tanpa itu tidak ada yang rusak,
+sampai halaman pengelola muncul di hasil pencarian berbulan-bulan kemudian). Tesnya
+sudah dibuktikan gagal saat rute palsu disisipkan ke middleware saja.
+
+**Konsekuensi.** Menambah rute pengelola sekarang cukup satu baris, dan lupa
+mendaftarkannya menggagalkan tes alih-alih lolos diam-diam.
+
 ## 2026-08-11 - Aturan agen dipecah jadi global dan project
 
 **Konteks:** Repo dikerjakan bergantian oleh Claude, Gemini, Kimi, Deepseek, dan Qwen.

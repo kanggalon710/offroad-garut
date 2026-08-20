@@ -15,6 +15,8 @@ import { TRPCError } from "@trpc/server";
 
 import { BOOKING_STATUS_LABEL } from "@/lib/constants";
 import { catatKegagalanDatabase } from "@/lib/db/errors";
+import { hitungSubtotalTersimpan } from "@/lib/add-on";
+import { ADD_ON_PRICING_UNIT_LABEL } from "@/lib/constants";
 import { formatIDR, formatJam, formatTanggal } from "@/lib/utils";
 import { getServerApi } from "@/server/caller";
 
@@ -58,7 +60,7 @@ export default async function TicketPage({ params }: PageProps) {
     throw error;
   }
 
-  const { booking, pkg, meetingPoint, payment } = data;
+  const { booking, pkg, meetingPoint, payment, addOns } = data;
 
   const isPaid =
     booking.status === "paid" ||
@@ -194,6 +196,33 @@ export default async function TicketPage({ params }: PageProps) {
                 </dt>
                 <dd className="text-right font-medium">{meetingPoint.name}</dd>
               </div>
+            ) : null}
+            {addOns.length > 0 ? (
+              <>
+                <div className="border-t border-border pt-4">
+                  <p className="font-semibold text-foreground">
+                    Layanan tambahan
+                  </p>
+                </div>
+                {addOns.map((addOn) => (
+                  <div
+                    key={addOn.id}
+                    className="flex items-start justify-between gap-4"
+                  >
+                    <dt className="text-muted-foreground">
+                      {addOn.name}
+                      <span className="block text-legal">
+                        {addOn.pricingUnit === "per_pax"
+                          ? `${formatIDR(addOn.unitPriceIdr)} x ${addOn.quantity} orang`
+                          : ADD_ON_PRICING_UNIT_LABEL[addOn.pricingUnit]}
+                      </span>
+                    </dt>
+                    <dd className="tabular whitespace-nowrap font-medium">
+                      {formatIDR(hitungSubtotalTersimpan(addOn))}
+                    </dd>
+                  </div>
+                ))}
+              </>
             ) : null}
             <div className="flex items-start justify-between gap-4 border-t border-border pt-4">
               <dt className="font-bold">Total</dt>

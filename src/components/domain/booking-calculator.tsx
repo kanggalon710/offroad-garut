@@ -4,7 +4,13 @@ import { AlertCircle, Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { MIN_PAX } from "@/lib/constants";
+import type { AddOnOption } from "@/components/domain/add-on-picker";
+import {
+  hitungKuantitas,
+  hitungSubtotal,
+  hitungTotalAddOn,
+} from "@/lib/add-on";
+import { ADD_ON_PRICING_UNIT_LABEL, MIN_PAX } from "@/lib/constants";
 import { formatIDR } from "@/lib/utils";
 
 /** Pesan persis seperti yang diminta AC-BOOKING-1. */
@@ -114,6 +120,8 @@ type PriceSummaryProps = {
   pricePerPax: number;
   paxCount: number;
   valid: boolean;
+  /** Layanan tambahan yang sedang dicentang, sudah dalam urutan tampil. */
+  addOns?: AddOnOption[];
 };
 
 /** AC-BOOKING-2: total dihitung ulang setiap kali pax berubah. */
@@ -122,8 +130,13 @@ export function PriceSummaryCard({
   pricePerPax,
   paxCount,
   valid,
+  addOns = [],
 }: PriceSummaryProps) {
-  const total = valid ? pricePerPax * paxCount : 0;
+  const subtotalPaket = valid ? pricePerPax * paxCount : 0;
+  // Helper yang sama dipakai server saat membuat pesanan, jadi angka di
+  // layar ini tidak mungkin berbeda dari yang ditagih Midtrans.
+  const totalAddOn = valid ? hitungTotalAddOn(addOns, paxCount) : 0;
+  const total = subtotalPaket + totalAddOn;
 
   return (
     <Card className="p-5">
@@ -144,6 +157,33 @@ export function PriceSummaryCard({
             {valid ? `${paxCount} orang` : "-"}
           </dd>
         </div>
+
+        {addOns.length > 0 ? (
+          <>
+            <div className="border-t border-border pt-3">
+              <p className="font-semibold text-foreground">Layanan tambahan</p>
+            </div>
+
+            {addOns.map((addOn) => (
+              <div
+                key={addOn.id}
+                className="flex items-start justify-between gap-4"
+              >
+                <dt className="text-muted-foreground">
+                  {addOn.name}
+                  <span className="block text-legal">
+                    {addOn.pricingUnit === "per_pax" && valid
+                      ? `${formatIDR(addOn.priceIdr)} x ${hitungKuantitas(addOn.pricingUnit, paxCount)} orang`
+                      : ADD_ON_PRICING_UNIT_LABEL[addOn.pricingUnit]}
+                  </span>
+                </dt>
+                <dd className="tabular whitespace-nowrap font-medium">
+                  {valid ? formatIDR(hitungSubtotal(addOn, paxCount)) : "-"}
+                </dd>
+              </div>
+            ))}
+          </>
+        ) : null}
       </dl>
 
       <div className="mt-4 flex items-baseline justify-between border-t border-border pt-4">
@@ -157,8 +197,8 @@ export function PriceSummaryCard({
       </div>
 
       <p className="mt-3 text-legal text-muted-foreground">
-        Pembayaran diproses Midtrans. Tidak ada biaya layanan tambahan dari
-        kami.
+        Pembayaran diproses Midtrans. Yang tampil di atas sudah harga akhir,
+        tidak ada biaya admin tersembunyi.
       </p>
     </Card>
   );

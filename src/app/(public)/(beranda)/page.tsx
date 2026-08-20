@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import { env } from "@/env";
 import { Faq } from "@/components/landing/faq";
 import { FinalCta } from "@/components/landing/final-cta";
@@ -8,8 +10,25 @@ import {
   PackageList,
   type PackageCard,
 } from "@/components/landing/package-list";
+import { JsonLd } from "@/components/shared/json-ld";
 import { catatKegagalanDatabase } from "@/lib/db/errors";
+import {
+  bisnisLokalJsonLd,
+  canonical,
+  situsJsonLd,
+  tanyaJawabJsonLd,
+} from "@/lib/seo";
 import { getServerApi } from "@/server/caller";
+
+export const metadata: Metadata = {
+  // `absolute` melewati template "%s | Offroad Garut" dari layout induk.
+  // Tanpa itu judulnya jadi "Offroad Garut ... | Offroad Garut", dan
+  // pengulangan itu memakan lebar yang seharusnya diisi teks berguna.
+  title: { absolute: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray" },
+  description:
+    "Sewa Jeep offroad di Garut dengan driver berpengalaman. Jelajahi Cikuray, kebun teh, dan curug. Pesan online, bayar aman, tiket QR langsung ke WhatsApp. Minimal 3 orang.",
+  alternates: canonical("/"),
+};
 
 type HasilPaket =
   | { status: "ok"; packages: PackageCard[] }
@@ -61,6 +80,12 @@ export default async function LandingPage() {
 
   return (
     <>
+      {/* Data terstruktur beranda: usaha, situs, dan tanya jawab. Semuanya
+          dibaca dari sumber yang sama dengan teks yang tampil di bawah. */}
+      <JsonLd data={bisnisLokalJsonLd()} />
+      <JsonLd data={situsJsonLd()} />
+      <JsonLd data={tanyaJawabJsonLd()} />
+
       <Hero />
       <Gallery />
       <PackageList

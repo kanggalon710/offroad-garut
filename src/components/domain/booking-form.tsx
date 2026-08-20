@@ -9,6 +9,10 @@ import {
   PaxCalculator,
   PriceSummaryCard,
 } from "@/components/domain/booking-calculator";
+import {
+  AddOnPicker,
+  type AddOnOption,
+} from "@/components/domain/add-on-picker";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -43,6 +47,7 @@ export type MeetingPointOption = {
 type Props = {
   packages: BookingPackageOption[];
   meetingPoints: MeetingPointOption[];
+  addOns: AddOnOption[];
   initialSlug?: string;
   defaultName: string;
   defaultPhone: string;
@@ -59,6 +64,7 @@ function toDateString(date: Date): string {
 export function BookingForm({
   packages,
   meetingPoints,
+  addOns,
   initialSlug,
   defaultName,
   defaultPhone,
@@ -79,6 +85,9 @@ export function BookingForm({
   const [contactName, setContactName] = useState(defaultName);
   const [contactPhone, setContactPhone] = useState(defaultPhone);
   const [specialRequests, setSpecialRequests] = useState("");
+  const [addOnTerpilih, setAddOnTerpilih] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [touched, setTouched] = useState(false);
 
@@ -92,6 +101,22 @@ export function BookingForm({
   const phoneValid = normalizePhone(contactPhone) !== null;
   const nameValid = contactName.trim().length >= 2;
   const dateValid = date !== undefined;
+
+  // Hanya yang dicentang, dalam urutan yang sama dengan daftar pilihannya,
+  // supaya rincian biaya tidak berubah urutan setiap kali dicentang.
+  const addOnDipilih = useMemo(
+    () => addOns.filter((addOn) => addOnTerpilih.has(addOn.id)),
+    [addOns, addOnTerpilih],
+  );
+
+  function toggleAddOn(id: string, dipilih: boolean) {
+    setAddOnTerpilih((sebelumnya) => {
+      const berikutnya = new Set(sebelumnya);
+      if (dipilih) berikutnya.add(id);
+      else berikutnya.delete(id);
+      return berikutnya;
+    });
+  }
 
   const availabilityQuery = api.booking.getAvailability.useQuery(
     { packageId: selected?.id ?? "", daysAhead: 30 },
@@ -158,6 +183,9 @@ export function BookingForm({
       contactName: contactName.trim(),
       contactPhone: contactPhone.trim(),
       specialRequests: specialRequests.trim() || undefined,
+      // Hanya id-nya. Jumlahnya ditentukan server dari satuan harga
+      // add-on dan jumlah peserta.
+      addOns: addOnDipilih.length > 0 ? addOnDipilih.map((a) => a.id) : undefined,
     });
   }
 
@@ -362,6 +390,14 @@ export function BookingForm({
               placeholder="Bawa anak usia 6 tahun, tolong siapkan kursi depan."
             />
           </Field>
+
+          <AddOnPicker
+            addOns={addOns}
+            terpilih={addOnTerpilih}
+            onToggle={toggleAddOn}
+            paxCount={paxCount}
+            paxValid={paxValid}
+          />
         </Card>
       </div>
 
@@ -372,6 +408,7 @@ export function BookingForm({
             pricePerPax={selected.pricePerPaxIdr}
             paxCount={paxCount}
             valid={paxValid}
+            addOns={addOnDipilih}
           />
 
           {submitError ? (

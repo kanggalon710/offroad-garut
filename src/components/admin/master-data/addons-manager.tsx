@@ -21,8 +21,14 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
+import {
+  ADD_ON_PRICING_UNIT_LABEL,
+  ADD_ON_PRICING_UNIT_OPTIONS,
+} from "@/lib/constants";
+import type { AddOnPricingUnit } from "@/lib/db/schema";
 import { formatIDR } from "@/lib/utils";
 import { api } from "@/trpc/client";
 
@@ -36,6 +42,8 @@ export function AddOnsManager() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [priceIdr, setPriceIdr] = useState(100000);
+  const [pricingUnit, setPricingUnit] =
+    useState<AddOnPricingUnit>("per_booking");
   const [isActive, setIsActive] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -72,6 +80,7 @@ export function AddOnsManager() {
     setName("");
     setDescription("");
     setPriceIdr(100000);
+    setPricingUnit("per_booking");
     setIsActive(true);
     setErrorMsg(null);
   }
@@ -85,10 +94,16 @@ export function AddOnsManager() {
         name,
         description: description || undefined,
         priceIdr,
+        pricingUnit,
         isActive,
       });
     } else {
-      createMutation.mutate({ name, description: description || undefined, priceIdr });
+      createMutation.mutate({
+        name,
+        description: description || undefined,
+        priceIdr,
+        pricingUnit,
+      });
     }
   }
 
@@ -110,7 +125,7 @@ export function AddOnsManager() {
         <EmptyState
           icon={Sparkles}
           title="Belum ada layanan add-on"
-          description="Tambahkan layanan seperti dokumentasi drone atau sewa helm supaya pelanggan bisa mencentangnya saat memesan."
+          description="Yang biasa dijual operator offroad: nasi liwet dan snack (per orang), dokumentasi drone, fotografer, paket fun game, dan api unggun (per rombongan). Tambahkan di sini supaya pelanggan bisa mencentangnya saat memesan."
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -127,7 +142,10 @@ export function AddOnsManager() {
                   <p className="mt-1 text-meta text-muted-foreground">{item.description}</p>
                 ) : null}
                 <p className="mt-2 text-base font-extrabold text-primary">
-                  {formatIDR(item.priceIdr)}
+                  {formatIDR(item.priceIdr)}{" "}
+                  <span className="text-meta font-medium text-muted-foreground">
+                    {ADD_ON_PRICING_UNIT_LABEL[item.pricingUnit]}
+                  </span>
                 </p>
               </div>
 
@@ -140,6 +158,7 @@ export function AddOnsManager() {
                     setName(item.name);
                     setDescription(item.description ?? "");
                     setPriceIdr(item.priceIdr);
+                    setPricingUnit(item.pricingUnit);
                     setIsActive(item.isActive);
                     setDialogOpen(true);
                   }}
@@ -184,6 +203,26 @@ export function AddOnsManager() {
             </Field>
             <Field id="addon-price" label="Harga (IDR)" required>
               <Input id="addon-price" type="number" value={priceIdr} onChange={(e) => setPriceIdr(Number(e.target.value))} min={0} required />
+            </Field>
+            <Field
+              id="addon-unit"
+              label="Satuan harga"
+              required
+              hint="Menentukan bagaimana harga di atas dikalikan saat pelanggan memesan."
+            >
+              <Select
+                id="addon-unit"
+                value={pricingUnit}
+                onChange={(e) =>
+                  setPricingUnit(e.target.value as AddOnPricingUnit)
+                }
+              >
+                {ADD_ON_PRICING_UNIT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
             </Field>
             {editingId ? (
               <Checkbox

@@ -1,4 +1,5 @@
 import type { BadgeTone } from "@/components/ui/badge";
+import type { AddOnPricingUnit } from "@/lib/db/schema";
 
 /** Jam keberangkatan yang dilayani basecamp. */
 export const TIME_SLOTS = [
@@ -12,6 +13,15 @@ export type TimeSlotValue = (typeof TIME_SLOTS)[number]["value"];
 export const TIME_SLOT_VALUES: readonly string[] = TIME_SLOTS.map(
   (slot) => slot.value,
 );
+
+/**
+ * Paket percobaan yang hanya boleh dipesan akun testing. Slug-nya dipakai
+ * di tiga tempat (seed, penolakan pemesanan, dan pengecualian sitemap),
+ * jadi diketik sekali di sini: paket ini punya harga percobaan dan tidak
+ * boleh sampai muncul di hasil pencarian.
+ */
+export const SLUG_PAKET_DUMMY = "paket-dummy-testing";
+export const EMAIL_AKUN_DUMMY = "dummy@offroadgarut.id";
 
 /** Batas bawah yang dikunci PRD: rombongan minimal 3 orang. */
 export const MIN_PAX = 3;
@@ -59,6 +69,26 @@ export type JeepStatus = "active" | "maintenance" | "retired";
 export const JEEP_STATUS_OPTIONS = (
   Object.keys(JEEP_STATUS_LABEL) as JeepStatus[]
 ).map((value) => ({ value, label: JEEP_STATUS_LABEL[value] }));
+
+/**
+ * Satuan harga layanan tambahan. Labelnya dipakai bersama form pengelola,
+ * daftar pilihan tamu, dan e-ticket, supaya satu add-on tidak pernah
+ * dijelaskan dengan dua kata berbeda di layar yang berbeda.
+ */
+export const ADD_ON_PRICING_UNIT_LABEL: Record<AddOnPricingUnit, string> = {
+  per_pax: "per orang",
+  per_booking: "per rombongan",
+};
+
+/** Keterangan panjang untuk form pengelola, menjelaskan akibat pilihannya. */
+export const ADD_ON_PRICING_UNIT_HINT: Record<AddOnPricingUnit, string> = {
+  per_pax: "Per orang (jumlahnya mengikuti peserta, 10 orang ditagih 10x)",
+  per_booking: "Per rombongan (ditagih sekali, berapa pun jumlah pesertanya)",
+};
+
+export const ADD_ON_PRICING_UNIT_OPTIONS = (
+  Object.keys(ADD_ON_PRICING_UNIT_LABEL) as AddOnPricingUnit[]
+).map((value) => ({ value, label: ADD_ON_PRICING_UNIT_HINT[value] }));
 
 export type AlbumVisibility = "public" | "private";
 

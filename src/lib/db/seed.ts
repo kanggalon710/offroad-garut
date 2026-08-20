@@ -11,6 +11,7 @@ import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";
 
 import { env } from "@/env";
+import { SLUG_PAKET_DUMMY } from "@/lib/constants";
 import { db } from "./index";
 import {
   jeeps,
@@ -96,7 +97,7 @@ const packageSeeds = [
   },
   {
     name: "Paket Dummy Testing",
-    slug: "paket-dummy-testing",
+    slug: SLUG_PAKET_DUMMY,
     description:
       "Paket dummy untuk keperluan testing. Harga khusus Rp 1.000 supaya alur tiket dan pembayaran Midtrans bisa diuji end-to-end.",
     durationHours: 1,

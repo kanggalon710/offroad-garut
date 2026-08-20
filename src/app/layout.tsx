@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
 import { TRPCProvider } from "@/trpc/client";
 import { env } from "@/env";
+import { canonical, urlPenuh } from "@/lib/seo";
 
 import "./globals.css";
 
@@ -33,6 +34,7 @@ export const metadata: Metadata = {
     "wisata cikuray",
     "paket offroad",
   ],
+  alternates: canonical("/"),
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -44,10 +46,33 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "id_ID",
+    siteName: "Offroad Garut",
+    url: urlPenuh("/"),
+    title: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
+    description:
+      "Pilih paket, bayar online, tiket QR langsung masuk WhatsApp. Minimal 3 orang.",
+    images: [
+      {
+        url: "/images/hero-offroad-garut.jpg",
+        // Dimensi eksplisit supaya WhatsApp dan Facebook tidak perlu
+        // mengunduh gambarnya dulu sebelum bisa menampilkan pratinjau.
+        width: 1200,
+        height: 630,
+        alt: "Jeep offroad menyusuri jalur tanah di kaki Gunung Cikuray, Garut",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
     title: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
     description:
       "Pilih paket, bayar online, tiket QR langsung masuk WhatsApp. Minimal 3 orang.",
     images: ["/images/hero-offroad-garut.jpg"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
 };
 

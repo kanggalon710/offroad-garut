@@ -31,11 +31,11 @@ repo ini adalah symlink ke file ini. Edit yang ini saja.
 
 **EN** Rules live here. Running state lives in `.ai/`. Read `.ai/TODO.md` and the newest
 entries of `.ai/PROGRESS.md` BEFORE starting non trivial work, and update both BEFORE
-reporting done. The protocol is in section 13 of the global standard.
+reporting done. The protocol is in section 14 of the global standard.
 
 **ID** Aturan ada di sini. State yang berjalan ada di `.ai/`. Baca `.ai/TODO.md` dan entri
 terbaru `.ai/PROGRESS.md` SEBELUM memulai pekerjaan non-trivial, dan perbarui keduanya
-SEBELUM melapor selesai. Protokolnya ada di bagian 13 standar global.
+SEBELUM melapor selesai. Protokolnya ada di bagian 14 standar global.
 
 | File | Isi / Contents |
 |---|---|

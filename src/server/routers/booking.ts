@@ -4,9 +4,15 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, sql } from "drizzle-orm"
 import { z } from "zod";
 
 import { env } from "@/env";
+import { hitungKuantitas } from "@/lib/add-on";
 import { isStaff } from "@/lib/roles";
 import { isRowActive } from "@/lib/db/active-row";
-import { MIN_PAX, TIME_SLOT_VALUES } from "@/lib/constants";
+import {
+  EMAIL_AKUN_DUMMY,
+  MIN_PAX,
+  SLUG_PAKET_DUMMY,
+  TIME_SLOT_VALUES,
+} from "@/lib/constants";
 import {
   addOnServices,
   bookingAddOns,
@@ -242,14 +248,12 @@ export const bookingRouter = router({
         contactName: z.string().min(2, "Nama minimal 2 huruf").max(255),
         contactPhone: z.string().min(8, "Nomor WhatsApp belum lengkap"),
         specialRequests: z.string().max(500).optional(),
-        addOns: z
-          .array(
-            z.object({
-              addOnId: z.string().uuid(),
-              quantity: z.number().int().min(1).max(99),
-            }),
-          )
-          .optional(),
+        /**
+         * Hanya id-nya. Jumlahnya SENGAJA tidak diterima dari peramban:
+         * ia diturunkan di server dari pricing_unit dan paxCount, jadi
+         * memalsukannya mustahil, bukan sekadar tervalidasi.
+         */
+        addOns: z.array(z.string().uuid()).max(20).optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -300,8 +304,8 @@ export const bookingRouter = router({
       // Paket dummy khusus akun testing: hindari pengguna nyata memesan
       // paket dengan harga percobaan.
       if (
-        pkg.slug === "paket-dummy-testing" &&
-        ctx.user.email !== "dummy@offroadgarut.id"
+        pkg.slug === SLUG_PAKET_DUMMY &&
+        ctx.user.email !== EMAIL_AKUN_DUMMY
       ) {
         throw new TRPCError({
           code: "BAD_REQUEST",
@@ -314,17 +318,15 @@ export const bookingRouter = router({
 
       // Ambil detail add-on services yang dipilih untuk validasi dan
       // perhitungan harga. Tidak percaya harga dari client.
+      const idAddOnDiminta = [...new Set(input.addOns ?? [])];
       const selectedAddOns =
-        input.addOns && input.addOns.length > 0
+        idAddOnDiminta.length > 0
           ? await ctx.db
               .select()
               .from(addOnServices)
               .where(
                 and(
-                  inArray(
-                    addOnServices.id,
-                    input.addOns.map((a) => a.addOnId),
-                  ),
+                  inArray(addOnServices.id, idAddOnDiminta),
                   isRowActive(addOnServices),
                 ),
               )
@@ -339,21 +341,24 @@ export const bookingRouter = router({
       }[] = [];
       let addOnTotal = 0;
 
-      for (const selection of input.addOns ?? []) {
-        const svc = addOnMap.get(selection.addOnId);
+      for (const addOnId of idAddOnDiminta) {
+        const svc = addOnMap.get(addOnId);
         if (!svc) {
           throw new TRPCError({
             code: "BAD_REQUEST",
             message: "Layanan tambahan tidak ditemukan atau sudah dinonaktifkan.",
           });
         }
+        // Helper yang sama dipakai kartu rincian biaya di peramban, jadi
+        // angka yang dilihat tamu tidak mungkin berbeda dari yang ditagih.
+        const quantity = hitungKuantitas(svc.pricingUnit, input.paxCount);
         addOnItems.push({
           id: svc.id,
           name: svc.name,
           price: svc.priceIdr,
-          quantity: selection.quantity,
+          quantity,
         });
-        addOnTotal += svc.priceIdr * selection.quantity;
+        addOnTotal += svc.priceIdr * quantity;
       }
 
       const grandTotalIdr = totalIdr + addOnTotal;
@@ -396,6 +401,9 @@ export const bookingRouter = router({
               bookingId: booking.id,
               addOnId: item.id,
               quantity: item.quantity,
+              // Snapshot: e-ticket lama tidak boleh ikut berubah kalau
+              // pemilik menyesuaikan tarif add-on nanti.
+              unitPriceIdr: item.price,
             })),
           );
         }
@@ -519,7 +527,27 @@ export const bookingRouter = router({
         });
       }
 
-      return row;
+      // Satu query tambahan, bukan satu query per baris add-on. Harga dan
+      // jumlahnya dibaca dari snapshot di booking_add_ons, bukan dari tarif
+      // add-on yang berlaku sekarang, supaya e-ticket lama tetap cocok
+      // dengan yang sudah ditagih Midtrans.
+      const addOns = await ctx.db
+        .select({
+          id: bookingAddOns.id,
+          name: addOnServices.name,
+          pricingUnit: addOnServices.pricingUnit,
+          quantity: bookingAddOns.quantity,
+          unitPriceIdr: bookingAddOns.unitPriceIdr,
+        })
+        .from(bookingAddOns)
+        .innerJoin(
+          addOnServices,
+          eq(addOnServices.id, bookingAddOns.addOnId),
+        )
+        .where(eq(bookingAddOns.bookingId, row.booking.id))
+        .orderBy(asc(addOnServices.name));
+
+      return { ...row, addOns };
     }),
 
   /**

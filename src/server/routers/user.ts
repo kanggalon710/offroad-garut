@@ -1,8 +1,14 @@
 import { TRPCError } from "@trpc/server";
-import { desc, eq } from "drizzle-orm";
+import { asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 
-import { bookings, packages, users } from "@/lib/db/schema";
+import {
+  addOnServices,
+  bookingAddOns,
+  bookings,
+  packages,
+  users,
+} from "@/lib/db/schema";
 import { normalizePhone } from "@/lib/utils";
 import { protectedProcedure, router } from "../trpc";
 
@@ -92,7 +98,7 @@ export const userRouter = router({
     }),
 
   getOrders: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.db
+    const rows = await ctx.db
       .select({
         booking: bookings,
         packageName: packages.name,
@@ -101,5 +107,36 @@ export const userRouter = router({
       .innerJoin(packages, eq(packages.id, bookings.packageId))
       .where(eq(bookings.userId, ctx.user.id))
       .orderBy(desc(bookings.createdAt));
+
+    if (rows.length === 0) return [];
+
+    // Satu query untuk seluruh daftar, bukan satu query per pesanan.
+    // Cukup namanya saja: rincian harganya ada di halaman e-ticket.
+    const namaAddOn = await ctx.db
+      .select({
+        bookingId: bookingAddOns.bookingId,
+        name: addOnServices.name,
+      })
+      .from(bookingAddOns)
+      .innerJoin(addOnServices, eq(addOnServices.id, bookingAddOns.addOnId))
+      .where(
+        inArray(
+          bookingAddOns.bookingId,
+          rows.map((row) => row.booking.id),
+        ),
+      )
+      .orderBy(asc(addOnServices.name));
+
+    const perPesanan = new Map<string, string[]>();
+    for (const baris of namaAddOn) {
+      const daftar = perPesanan.get(baris.bookingId) ?? [];
+      daftar.push(baris.name);
+      perPesanan.set(baris.bookingId, daftar);
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      addOnNames: perPesanan.get(row.booking.id) ?? [],
+    }));
   }),
 });

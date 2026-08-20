@@ -380,6 +380,7 @@ export const adminRouter = router({
         name: z.string().min(2, "Nama layanan minimal 2 huruf").max(255),
         description: z.string().max(500).optional(),
         priceIdr: z.number().int().min(0, "Harga tidak boleh negatif"),
+        pricingUnit: z.enum(["per_pax", "per_booking"]),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -390,13 +391,18 @@ export const adminRouter = router({
           name: input.name,
           description: input.description ?? null,
           priceIdr: input.priceIdr,
+          pricingUnit: input.pricingUnit,
           isActive: true,
         });
         await catatAudit(tx, {
           tableName: "add_on_services",
           recordId: id,
           action: "INSERT",
-          newData: { name: input.name, priceIdr: input.priceIdr },
+          newData: {
+            name: input.name,
+            priceIdr: input.priceIdr,
+            pricingUnit: input.pricingUnit,
+          },
           changedBy: ctx.user.id,
         });
       });
@@ -410,6 +416,7 @@ export const adminRouter = router({
         name: z.string().min(2).max(255),
         description: z.string().max(500).optional(),
         priceIdr: z.number().int().min(0),
+        pricingUnit: z.enum(["per_pax", "per_booking"]),
         isActive: z.boolean(),
       }),
     )
@@ -421,6 +428,7 @@ export const adminRouter = router({
             name: input.name,
             description: input.description ?? null,
             priceIdr: input.priceIdr,
+            pricingUnit: input.pricingUnit,
             isActive: input.isActive,
             updatedAt: new Date(),
           })
@@ -432,6 +440,7 @@ export const adminRouter = router({
           newData: {
             name: input.name,
             priceIdr: input.priceIdr,
+            pricingUnit: input.pricingUnit,
             isActive: input.isActive,
           },
           changedBy: ctx.user.id,
