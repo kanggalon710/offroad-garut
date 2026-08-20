@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" rx="14" fill="#166534"/>
+  <!-- Background mountain -->
+  <polygon points="10,46 26,22 36,36 44,24 54,46" fill="#15803d"/>
+  <!-- Foreground mountain lines -->
+  <polygon points="10,46 26,22 36,36 44,24 54,46" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Mountain snow caps -->
+  <polygon points="26,22 22,29 28,28 30,26" fill="#ffffff"/>
+  <polygon points="44,24 41,29 46,28 47,26" fill="#ffffff"/>
+  <!-- Offroad trail curve line -->
+  <path d="M8,48 Q32,55 56,48" fill="none" stroke="#facc15" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
