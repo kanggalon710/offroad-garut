@@ -37,6 +37,7 @@ const JEDA_JAJAK_MS = 3000;
 export function PembaruanClient() {
   const { toast } = useToast();
   const utils = api.useUtils();
+  const [gantiPinTerbuka, setGantiPinTerbuka] = useState(false);
 
   const statusQuery = api.pembaruan.getStatus.useQuery(undefined, {
     // Selama pembaruan berjalan aplikasi akan restart di tengah jalan, jadi
@@ -64,6 +65,7 @@ export function PembaruanClient() {
   const setPin = api.pembaruan.setPin.useMutation({
     onSuccess() {
       toast("PIN pembaruan tersimpan.");
+      setGantiPinTerbuka(false);
       void utils.pembaruan.getStatus.invalidate();
     },
     onError(error) {
@@ -106,8 +108,9 @@ export function PembaruanClient() {
       >
         <FormPin
           wajib
+          perluPinLama={data.punyaPin}
           pending={setPin.isPending}
-          onSimpan={(pinBaru) => setPin.mutate({ pinBaru })}
+          onSimpan={(nilai) => setPin.mutate(nilai)}
         />
       </AdminPage>
     );
@@ -201,6 +204,33 @@ export function PembaruanClient() {
       ) : null}
 
       {job ? <KartuKemajuan job={job} berjalan={berjalan} /> : null}
+
+      {gantiPinTerbuka ? (
+        <FormPin
+          wajib={false}
+          perluPinLama={data.punyaPin}
+          pending={setPin.isPending}
+          onSimpan={(nilai) => setPin.mutate(nilai)}
+        />
+      ) : (
+        <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-title font-bold text-foreground">PIN pembaruan</h2>
+            <p className="mt-1 text-meta text-muted-foreground">
+              Diminta setiap kali menerapkan pembaruan. Ganti kalau ada yang
+              pernah melihatnya.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            className="sm:shrink-0"
+            onClick={() => setGantiPinTerbuka(true)}
+          >
+            <KeyRound className="size-4" aria-hidden="true" />
+            Ganti PIN
+          </Button>
+        </Card>
+      )}
     </AdminPage>
   );
 }
@@ -399,17 +429,26 @@ function DialogPin({
 
 function FormPin({
   wajib,
+  perluPinLama,
   pending,
   onSimpan,
 }: {
   wajib: boolean;
+  /**
+   * Akun sudah punya PIN, jadi server mewajibkan yang lama disebut. Tanpa
+   * kolom ini, layar wajib-ganti-PIN mustahil dilewati: server menuntut PIN
+   * lama yang tidak pernah diminta ke siapa pun.
+   */
+  perluPinLama: boolean;
   pending: boolean;
-  onSimpan: (pinBaru: string) => void;
+  onSimpan: (nilai: { pinBaru: string; pinLama?: string }) => void;
 }) {
+  const [pinLama, setPinLama] = useState("");
   const [pin, setPin] = useState("");
   const [ulangi, setUlangi] = useState("");
 
-  const cocok = pin.length === 6 && pin === ulangi;
+  const lamaTerisi = !perluPinLama || pinLama.length === 6;
+  const cocok = pin.length === 6 && pin === ulangi && lamaTerisi;
 
   return (
     <Card className="p-5">
@@ -429,9 +468,35 @@ function FormPin({
         className="mt-5 space-y-4"
         onSubmit={(e) => {
           e.preventDefault();
-          onSimpan(pin);
+          onSimpan({
+            pinBaru: pin,
+            pinLama: perluPinLama ? pinLama : undefined,
+          });
         }}
       >
+        {perluPinLama ? (
+          <Field
+            id="pin-sekarang"
+            label="PIN sekarang"
+            hint={
+              wajib
+                ? "PIN bawaan yang dipakai saat akun ini dibuat."
+                : "Diperlukan supaya sesi yang dibajak tidak bisa menetapkan PIN baru."
+            }
+          >
+            <Input
+              id="pin-sekarang"
+              inputMode="numeric"
+              autoComplete="current-password"
+              maxLength={6}
+              required
+              value={pinLama}
+              onChange={(e) => setPinLama(e.target.value.replace(/\D/g, ""))}
+              placeholder="6 digit angka"
+            />
+          </Field>
+        ) : null}
+
         <Field id="pin-baru" label="PIN baru">
           <Input
             id="pin-baru"

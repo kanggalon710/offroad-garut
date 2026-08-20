@@ -4,12 +4,13 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { MIME_MEDIA_DIIZINKAN } from "@/lib/media-types";
+import { isStaff, toRole } from "@/lib/roles";
 import { processAndSaveUpload } from "@/lib/upload";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
 const FormSchema = z.object({
-  subfolder: z.enum(["gallery", "album", "pdf"]).default("gallery"),
+  subfolder: z.enum(["gallery", "album", "pdf", "jeep"]).default("gallery"),
 });
 
 export async function POST(req: NextRequest) {
@@ -20,9 +21,12 @@ export async function POST(req: NextRequest) {
       { status: 401 },
     );
   }
-  if (session.user.role !== "admin" && session.user.role !== "owner") {
+  // Lewat isStaff, bukan perbandingan peran sendiri. Versi sebelumnya
+  // membandingkan langsung dengan "admin" dan "owner", sehingga super_admin
+  // ditolak mengunggah padahal ia peran tertinggi.
+  if (!isStaff(toRole(session.user.role))) {
     return NextResponse.json(
-      { error: "Hanya pemilik rental yang boleh unggah file" },
+      { error: "Hanya pengelola rental yang boleh unggah file" },
       { status: 403 },
     );
   }

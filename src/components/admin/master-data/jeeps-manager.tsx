@@ -1,13 +1,16 @@
 "use client";
 
-import { Car, Edit2, Plus, Trash2 } from "lucide-react";
+import { Car, Edit2, Eye, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
+import { JeepGaleri } from "@/components/admin/jeep-galeri";
+import { JeepServis } from "@/components/admin/jeep-servis";
 import { SectionToolbar } from "@/components/admin/master-data/section-toolbar";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -41,6 +44,18 @@ export function JeepsManager() {
   const [capacity, setCapacity] = useState(4);
   const [status, setStatus] = useState<JeepStatus>("active");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const publikMutation = api.admin.ubahTampilPublikJeep.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.admin.getJeepsAdmin.invalidate();
+      toast(
+        variables.tampilPublik
+          ? "Unit ini sekarang tampil di situs."
+          : "Unit ini disembunyikan dari situs.",
+      );
+    },
+    onError: (err) => setErrorMsg(err.message),
+  });
 
   const createMutation = api.admin.createJeep.useMutation({
     onSuccess: () => {
@@ -107,16 +122,20 @@ export function JeepsManager() {
           {query.data?.map((item) => {
             const jeepStatus = item.status as JeepStatus;
             return (
-              <Card
-                key={item.id}
-                className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
+              <Card key={item.id} className="flex flex-col gap-4 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <h3 className="tabular font-bold text-foreground">{item.plateNumber}</h3>
                     <Badge tone={JEEP_STATUS_TONE[jeepStatus] ?? "neutral"}>
                       {JEEP_STATUS_LABEL[jeepStatus] ?? item.status}
                     </Badge>
+                    {item.tampilPublik ? (
+                      <Badge tone="forest">
+                        <Eye className="size-3.5" aria-hidden="true" />
+                        Tampil di situs
+                      </Badge>
+                    ) : null}
                   </div>
                   <p className="text-meta text-muted-foreground">{item.name}</p>
                   <p className="text-legal text-muted-foreground">Kapasitas: {item.capacity} orang</p>
@@ -153,6 +172,30 @@ export function JeepsManager() {
                     </Button>
                   </ConfirmDialog>
                 </div>
+                </div>
+
+                <JeepGaleri
+                  jeepId={item.id}
+                  namaUnit={`${item.name} (${item.plateNumber})`}
+                  images={item.images}
+                />
+
+                <Checkbox
+                  id={`publik-${item.id}`}
+                  label="Tampilkan di situs"
+                  hint={
+                    item.images.length === 0
+                      ? "Unggah foto dulu. Unit tanpa foto tidak ikut tampil walau sakelarnya menyala."
+                      : "Unit ini muncul di seksi Armada pada halaman depan."
+                  }
+                  checked={item.tampilPublik}
+                  onCheckedChange={(tampilPublik) =>
+                    publikMutation.mutate({ id: item.id, tampilPublik })
+                  }
+                  disabled={publikMutation.isPending}
+                />
+
+                <JeepServis jeepId={item.id} plateNumber={item.plateNumber} />
               </Card>
             );
           })}

@@ -11,6 +11,67 @@ kutipan PRD, masalah, dan tindakan.
 
 ---
 
+## 2026-08-20 - Galeri Jeep memakai ulang carousel paket, bukan komponen baru
+
+**Konteks.** Pemilik minta foto Jeep bisa diklik untuk memperbesar dengan tombol panah
+untuk berpindah gambar. `PackageGalleryCarousel` sudah melakukan persis itu.
+
+**Opsi.** (1) Komponen baru khusus Jeep. (2) Generalkan yang ada dan pakai ulang.
+
+**Pilihan.** Opsi 2. Berkasnya jadi `galeri-carousel.tsx`, prop `packageName` jadi
+`namaObjek`, dan pemanggilnya menyertakan jenis objeknya sendiri ("paket Sunrise",
+"Jeep Willys Hijau") supaya alt-nya terbaca benar di kedua tempat.
+
+**Alasan.** Dua carousel berarti dua tempat yang harus diperbaiki setiap kali ada bug
+lightbox atau target sentuh. Terbukti langsung: saat digeneralkan ternyata tombol
+panahnya 40px dan tombol Zoom 30px, di bawah minimum 44px. Satu perbaikan menutup
+pelanggaran itu di halaman paket, galeri pengelola, dan seksi armada sekaligus.
+
+**Konsekuensi.** Komponen ini sekarang milik bersama. Perubahan tampilannya berdampak ke
+halaman publik maupun panel pengelola, jadi wajib diperiksa di keduanya.
+
+---
+
+## 2026-08-20 - Unit baru tidak otomatis tampil di situs
+
+**Konteks.** Foto Jeep dipakai di panel pengelola dan halaman publik, dengan sakelar per
+unit.
+
+**Opsi.** (1) Default tampil, pengelola menyembunyikan yang tidak layak. (2) Default
+tersembunyi, pengelola menyalakan yang sudah siap.
+
+**Pilihan.** Opsi 2, `tampil_publik` default FALSE. Unit tanpa foto juga tidak pernah
+ikut walau sakelarnya menyala.
+
+**Alasan.** Default pertama menerbitkan sesuatu tanpa ada yang pernah melihatnya. Unit
+yang catnya terkelupas atau fotonya buram akan tayang lebih dulu, dan baru dicabut
+setelah ada yang menyadarinya. Kesalahan default kedua cuma berupa seksi yang kosong,
+dan itu jauh lebih murah.
+
+**Konsekuensi.** Sesudah deploy, seksi Armada tidak muncul sampai pengelola menyalakan
+sakelarnya sendiri. Itu memang yang diinginkan, bukan tanda fiturnya rusak.
+
+---
+
+## 2026-08-20 - Pengingat servis hanya untuk yang dijadwalkan
+
+**Konteks.** Catatan servis punya kolom `servis_berikutnya` yang boleh kosong.
+
+**Opsi.** (1) Peringatkan juga unit yang lama tidak diservis walau tanpa jadwal.
+(2) Peringatkan hanya yang punya tanggal dan sudah dekat atau lewat.
+
+**Pilihan.** Opsi 2.
+
+**Alasan.** Opsi 1 membuat dashboard berisi peringatan sejak hari pertama, sebelum ada
+satu pun catatan diisi. Peringatan yang selalu menyala berhenti dibaca, dan saat ada
+unit yang benar-benar butuh servis, peringatannya tenggelam bersama yang lain.
+
+**Konsekuensi.** Pengingat hanya seberguna disiplin mengisi tanggal servis berikutnya.
+Kalau nanti pemilik ingin peringatan berbasis "sudah berapa lama sejak servis terakhir",
+itu aturan baru yang berdiri sendiri, bukan pelonggaran aturan ini.
+
+---
+
 ## 2026-08-20 - Paket dijeda ditandai OutOfStock, bukan noindex atau 404
 
 **Konteks.** Pemilik butuh cara menjeda layanan sementara. Sebelumnya boolean

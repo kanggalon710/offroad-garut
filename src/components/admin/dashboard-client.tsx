@@ -12,6 +12,8 @@ import {
   Users,
 } from "lucide-react";
 
+import Link from "next/link";
+
 import { AdminPage } from "@/components/admin/admin-page";
 import { AssignJeepDialog } from "@/components/admin/assign-jeep-dialog";
 import { Alert } from "@/components/ui/alert";
@@ -47,7 +49,22 @@ function SummaryCards() {
     },
   ];
 
+  const perluServis = summary.data?.perluServis ?? 0;
+
   return (
+    <div className="space-y-3">
+      {perluServis > 0 ? (
+        <Alert tone="warning" title="Ada unit yang perlu diservis">
+          {perluServis} unit sudah dekat atau lewat jadwal servis berikutnya.{" "}
+          <Link
+            href="/master"
+            className="font-medium underline underline-offset-4"
+          >
+            Lihat armada
+          </Link>
+        </Alert>
+      ) : null}
+
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
       {items.map(({ label, value, icon: Icon }, index) => (
         <Card
@@ -61,6 +78,7 @@ function SummaryCards() {
           <p className="tabular mt-0.5 font-bold leading-tight">{value}</p>
         </Card>
       ))}
+    </div>
     </div>
   );
 }

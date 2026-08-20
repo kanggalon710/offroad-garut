@@ -2,6 +2,7 @@
 
 import {
   ArrowDownToLine,
+  BarChart3,
   Database,
   Image as ImageIcon,
   LayoutDashboard,
@@ -28,6 +29,7 @@ const tabs = [
   { href: "/orders", label: "Semua pesanan", icon: ListChecks, matches: ["/orders"] },
   { href: "/master", label: "Kelola Master Data", icon: Database, matches: ["/master", "/packages"] },
   { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon, matches: ["/gallery"] },
+  { href: "/laporan", label: "Laporan", icon: BarChart3, matches: ["/laporan"] },
   { href: "/seo", label: "Kelola SEO", icon: Search, matches: ["/seo"] },
 ];
 

@@ -1,5 +1,9 @@
 import type { BadgeTone } from "@/components/ui/badge";
-import type { AddOnPricingUnit, PackageStatus } from "@/lib/db/schema";
+import type {
+  AddOnPricingUnit,
+  JenisServis,
+  PackageStatus,
+} from "@/lib/db/schema";
 
 /** Jam keberangkatan yang dilayani basecamp. */
 export const TIME_SLOTS = [
@@ -124,6 +128,18 @@ export const ADD_ON_PRICING_UNIT_HINT: Record<AddOnPricingUnit, string> = {
 export const ADD_ON_PRICING_UNIT_OPTIONS = (
   Object.keys(ADD_ON_PRICING_UNIT_LABEL) as AddOnPricingUnit[]
 ).map((value) => ({ value, label: ADD_ON_PRICING_UNIT_HINT[value] }));
+
+/** Jenis pekerjaan servis armada. */
+export const JENIS_SERVIS_LABEL: Record<JenisServis, string> = {
+  rutin: "Servis rutin",
+  perbaikan: "Perbaikan",
+  ban: "Ban",
+  lainnya: "Lainnya",
+};
+
+export const JENIS_SERVIS_OPTIONS = (
+  Object.keys(JENIS_SERVIS_LABEL) as JenisServis[]
+).map((value) => ({ value, label: JENIS_SERVIS_LABEL[value] }));
 
 export type AlbumVisibility = "public" | "private";
 

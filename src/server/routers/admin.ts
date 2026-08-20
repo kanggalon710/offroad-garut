@@ -1,15 +1,32 @@
 import { randomUUID } from "node:crypto";
 import { TRPCError } from "@trpc/server";
-import { and, asc, count, desc, eq, exists, inArray, isNull, ne, sql, sum } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  exists,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  sql,
+  sum,
+} from "drizzle-orm";
 import { z } from "zod";
 
 import { env } from "@/env";
 import { TIME_SLOT_VALUES } from "@/lib/constants";
+import { HARI_PERINGATAN_SERVIS } from "@/lib/laporan";
 import { catatAudit } from "@/lib/db/audit";
 import {
   addOnServices,
   bookingAllocations,
   bookings,
+  jeepGalleries,
+  jeepMaintenances,
   jeeps,
   meetingPoints,
   packageGalleries,
@@ -50,10 +67,30 @@ export const adminRouter = router({
       .from(bookings)
       .where(eq(bookings.status, "paid"));
 
+    // Unit yang servis berikutnya sudah dekat atau lewat. Hanya yang punya
+    // jadwal: unit tanpa servisBerikutnya memang belum dijadwalkan, dan
+    // memperingatkannya cuma melatih pengelola mengabaikan peringatan.
+    const batas = new Date();
+    batas.setDate(batas.getDate() + HARI_PERINGATAN_SERVIS);
+    const batasTanggal = batas.toISOString().slice(0, 10);
+
+    const perluServis = await ctx.db
+      .selectDistinct({ jeepId: jeepMaintenances.jeepId })
+      .from(jeepMaintenances)
+      .innerJoin(jeeps, eq(jeeps.id, jeepMaintenances.jeepId))
+      .where(
+        and(
+          isNotNull(jeepMaintenances.servisBerikutnya),
+          lte(jeepMaintenances.servisBerikutnya, batasTanggal),
+          isNull(jeeps.deletedAt),
+        ),
+      );
+
     return {
       ordersToday: paidToday?.orders ?? 0,
       revenueToday: paidToday?.revenue ?? 0,
       needsAction: needsAction?.total ?? 0,
+      perluServis: perluServis.length,
     };
   }),
 
@@ -864,12 +901,199 @@ export const adminRouter = router({
   /* =========== Master Data CRUD: Jeeps =========== */
 
   getJeepsAdmin: adminProcedure.query(async ({ ctx }) => {
-    return ctx.db
+    const armada = await ctx.db
       .select()
       .from(jeeps)
       .where(isNull(jeeps.deletedAt))
       .orderBy(asc(jeeps.plateNumber));
+
+    if (armada.length === 0) return [];
+
+    // Satu query untuk seluruh foto, bukan satu query per unit.
+    const foto = await ctx.db
+      .select()
+      .from(jeepGalleries)
+      .where(
+        inArray(
+          jeepGalleries.jeepId,
+          armada.map((unit) => unit.id),
+        ),
+      )
+      .orderBy(asc(jeepGalleries.sortOrder), asc(jeepGalleries.createdAt));
+
+    const perUnit = new Map<string, typeof foto>();
+    for (const gambar of foto) {
+      const daftar = perUnit.get(gambar.jeepId) ?? [];
+      daftar.push(gambar);
+      perUnit.set(gambar.jeepId, daftar);
+    }
+
+    return armada.map((unit) => ({
+      ...unit,
+      images: perUnit.get(unit.id) ?? [],
+    }));
   }),
+
+  /** Menyimpan beberapa foto sekaligus sesudah diunggah lewat /api/upload. */
+  tambahFotoJeep: adminProcedure
+    .input(
+      z.object({
+        jeepId: z.string().uuid(),
+        imageUrls: z.array(z.string().min(1).max(1024)).min(1).max(10),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const [terakhir] = await ctx.db
+        .select({ urutan: jeepGalleries.sortOrder })
+        .from(jeepGalleries)
+        .where(eq(jeepGalleries.jeepId, input.jeepId))
+        .orderBy(desc(jeepGalleries.sortOrder))
+        .limit(1);
+
+      const mulai = (terakhir?.urutan ?? -1) + 1;
+
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(jeepGalleries).values(
+          input.imageUrls.map((imageUrl, i) => ({
+            id: randomUUID(),
+            jeepId: input.jeepId,
+            imageUrl,
+            sortOrder: mulai + i,
+          })),
+        );
+
+        await catatAudit(tx, {
+          tableName: "jeep_galleries",
+          recordId: input.jeepId,
+          action: "INSERT",
+          newData: { jumlah: input.imageUrls.length },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { success: true as const };
+    }),
+
+  hapusFotoJeep: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [gambar] = await ctx.db
+        .select()
+        .from(jeepGalleries)
+        .where(eq(jeepGalleries.id, input.id))
+        .limit(1);
+
+      if (!gambar) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Foto tidak ditemukan" });
+      }
+
+      await ctx.db.transaction(async (tx) => {
+        await tx.delete(jeepGalleries).where(eq(jeepGalleries.id, input.id));
+        await catatAudit(tx, {
+          tableName: "jeep_galleries",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+
+      // Berkasnya ikut dihapus supaya disk tidak penuh oleh gambar yatim.
+      // Dijalankan SESUDAH barisnya hilang: kalau urutannya dibalik dan
+      // transaksinya gagal, barisnya tertinggal menunjuk berkas yang sudah
+      // tidak ada.
+      const { hapusBerkasUnggahan } = await import("@/lib/upload");
+      await hapusBerkasUnggahan(gambar.imageUrl);
+
+      return { success: true as const };
+    }),
+
+  /** Riwayat servis satu unit, terbaru dulu. */
+  getServisJeep: adminProcedure
+    .input(z.object({ jeepId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      return ctx.db
+        .select()
+        .from(jeepMaintenances)
+        .where(eq(jeepMaintenances.jeepId, input.jeepId))
+        .orderBy(desc(jeepMaintenances.tanggal), desc(jeepMaintenances.createdAt))
+        .limit(20);
+    }),
+
+  catatServisJeep: adminProcedure
+    .input(
+      z.object({
+        jeepId: z.string().uuid(),
+        tanggal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Format tanggal salah"),
+        jenis: z.enum(["rutin", "perbaikan", "ban", "lainnya"]),
+        biayaIdr: z.number().int().min(0),
+        catatan: z.string().max(1000).optional(),
+        servisBerikutnya: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const id = randomUUID();
+      await ctx.db.transaction(async (tx) => {
+        await tx.insert(jeepMaintenances).values({
+          id,
+          jeepId: input.jeepId,
+          tanggal: input.tanggal,
+          jenis: input.jenis,
+          biayaIdr: input.biayaIdr,
+          catatan: input.catatan ?? null,
+          servisBerikutnya: input.servisBerikutnya ?? null,
+          dicatatOleh: ctx.user.id,
+        });
+
+        await catatAudit(tx, {
+          tableName: "jeep_maintenances",
+          recordId: id,
+          action: "INSERT",
+          newData: { jeepId: input.jeepId, jenis: input.jenis },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { id, success: true as const };
+    }),
+
+  hapusServisJeep: adminProcedure
+    .input(z.object({ id: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx.delete(jeepMaintenances).where(eq(jeepMaintenances.id, input.id));
+        await catatAudit(tx, {
+          tableName: "jeep_maintenances",
+          recordId: input.id,
+          action: "DELETE",
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  ubahTampilPublikJeep: adminProcedure
+    .input(z.object({ id: z.string().uuid(), tampilPublik: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(jeeps)
+          .set({ tampilPublik: input.tampilPublik, updatedAt: new Date() })
+          .where(and(eq(jeeps.id, input.id), isNull(jeeps.deletedAt)));
+
+        await catatAudit(tx, {
+          tableName: "jeeps",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: { tampilPublik: input.tampilPublik },
+          changedBy: ctx.user.id,
+        });
+      });
+
+      return { success: true as const };
+    }),
 
   createJeep: adminProcedure
     .input(

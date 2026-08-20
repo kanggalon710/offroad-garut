@@ -274,10 +274,59 @@ export const jeeps = mysqlTable(
     status: mysqlEnum("status", ["active", "maintenance", "retired"])
       .notNull()
       .default("active"),
+    /**
+     * Unit ini boleh dipamerkan di halaman publik. Default false supaya unit
+     * baru tidak langsung tampil di situs sebelum pengelola melihat sendiri
+     * fotonya.
+     */
+    tampilPublik: boolean("tampil_publik").notNull().default(false),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     deletedAt: timestamp("deleted_at"),
   },
+);
+
+export const jeepGalleries = mysqlTable(
+  "jeep_galleries",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    jeepId: varchar("jeep_id", { length: 36 })
+      .notNull()
+      .references(() => jeeps.id, { onDelete: "cascade" }),
+    imageUrl: varchar("image_url", { length: 1024 }).notNull(),
+    alt: varchar("alt", { length: 255 }),
+    sortOrder: int("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [index("idx_jeep_galleries_jeep_id").on(table.jeepId)],
+);
+
+export const jeepMaintenances = mysqlTable(
+  "jeep_maintenances",
+  {
+    id: varchar("id", { length: 36 }).primaryKey(),
+    jeepId: varchar("jeep_id", { length: 36 })
+      .notNull()
+      .references(() => jeeps.id, { onDelete: "cascade" }),
+    tanggal: dateString("tanggal").notNull(),
+    jenis: mysqlEnum("jenis", ["rutin", "perbaikan", "ban", "lainnya"])
+      .notNull()
+      .default("rutin"),
+    biayaIdr: int("biaya_idr").notNull().default(0),
+    catatan: text("catatan"),
+    /**
+     * Nullable dengan sengaja. Servis yang belum dijadwalkan ulang tidak boleh
+     * memunculkan pengingat: mengingatkan sesuatu yang memang belum
+     * dijadwalkan cuma melatih pengelola mengabaikan peringatan.
+     */
+    servisBerikutnya: dateString("servis_berikutnya"),
+    dicatatOleh: varchar("dicatat_oleh", { length: 36 }),
+    createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (table) => [
+    index("idx_jeep_maintenances_jeep_id").on(table.jeepId),
+    index("idx_jeep_maintenances_berikutnya").on(table.servisBerikutnya),
+  ],
 );
 
 /* ======================== bookings ======================= */
@@ -542,6 +591,9 @@ export type Package = typeof packages.$inferSelect;
 export type PackageGallery = typeof packageGalleries.$inferSelect;
 export type MeetingPoint = typeof meetingPoints.$inferSelect;
 export type Jeep = typeof jeeps.$inferSelect;
+export type JeepGallery = typeof jeepGalleries.$inferSelect;
+export type JeepMaintenance = typeof jeepMaintenances.$inferSelect;
+export type JenisServis = JeepMaintenance["jenis"];
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
 export type SiteSettings = typeof siteSettings.$inferSelect;

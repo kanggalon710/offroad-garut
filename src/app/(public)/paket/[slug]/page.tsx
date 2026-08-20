@@ -6,7 +6,7 @@ import { notFound } from "next/navigation";
 import { TRPCError } from "@trpc/server";
 
 import { MeetingMapLoader } from "@/components/domain/meeting-map-loader";
-import { PackageGalleryCarousel } from "@/components/domain/package-gallery-carousel";
+import { GaleriCarousel } from "@/components/domain/galeri-carousel";
 import { Container } from "@/components/shared/container";
 import { JsonLd } from "@/components/shared/json-ld";
 import { Badge } from "@/components/ui/badge";
@@ -146,10 +146,10 @@ export default async function PackageDetailPage({ params }: PageProps) {
       <Container className="py-8">
         <div className="grid gap-8 lg:grid-cols-3">
           <div className="space-y-8 lg:col-span-2">
-            <PackageGalleryCarousel
+            <GaleriCarousel
               images={pkg.images}
               fallbackImage={FALLBACK_IMAGE}
-              packageName={pkg.name}
+              namaObjek={`paket ${pkg.name}`}
             />
 
             <div>

@@ -185,3 +185,35 @@ yaitu bagian yang paling menentukan apakah usaha ini muncul di pencarian lokal.
 jatuh ke sana kalau barisnya belum dibuat atau database sedang tidak bisa
 dihubungi, karena `generateMetadata` berjalan di setiap halaman publik dan yang
 melempar error di sana akan menjatuhkan seluruh halaman, bukan cuma tag-nya.
+
+## 16. Tabel `jeep_galleries`, `jeeps.tampil_publik`, dan `jeep_maintenances`
+
+PRD merancang tabel `jeeps` hanya sebagai daftar armada untuk alokasi: plat
+nomor, nama, kapasitas, dan status. Tiga tambahan dibuat di luar itu.
+
+`jeep_galleries` menyimpan foto tiap unit, mengikuti pola `package_galleries`
+yang sudah ada. Calon tamu sering menanyakan kondisi Jeep sebelum membayar, dan
+foto unit yang terawat menjawabnya lebih cepat daripada kalimat apa pun.
+
+`jeeps.tampil_publik` memisahkan "punya foto" dari "layak dipamerkan", supaya
+pengelola memilih sendiri unit mana yang muncul di halaman depan. Defaultnya
+FALSE karena menerbitkan sesuatu tanpa ada yang pernah melihatnya adalah default
+yang salah.
+
+`jeep_maintenances` menyimpan riwayat servis, biayanya, dan tanggal servis
+berikutnya. Status `maintenance` di tabel `jeeps` hanya menyatakan keadaan
+sekarang, sehingga tidak ada yang bisa menjawab kapan unit terakhir diservis
+atau berapa biaya perawatannya. Biaya per unit ikut masuk ke laporan utilisasi,
+dan tanggal servis berikutnya memunculkan peringatan di dashboard.
+
+## 17. Halaman `/laporan`
+
+PRD §12 tidak mencantumkan halaman laporan. Ditambahkan karena data yang sudah
+terkumpul (pesanan, alokasi Jeep, add-on, tanggal, dan jam keberangkatan) tidak
+bisa dibaca dari mana pun kecuali langsung ke database.
+
+Isinya empat bagian: papan jadwal harian per unit yang dipakai tiap pagi sebelum
+rombongan datang, utilisasi armada yang menunjukkan unit mana menganggur,
+performa paket dan add-on, serta pola hari dan jam. Semua angkanya dihitung dari
+pesanan yang benar-benar jadi saja; memasukkan pesanan batal akan membuat setiap
+angka lebih besar dari kenyataan dengan cara yang tidak pernah ketahuan.

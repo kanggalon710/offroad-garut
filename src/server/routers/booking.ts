@@ -21,6 +21,7 @@ import {
   addOnServices,
   bookingAddOns,
   bookings,
+  jeepGalleries,
   jeeps,
   meetingPoints,
   packageGalleries,
@@ -121,6 +122,58 @@ export const bookingRouter = router({
       .from(meetingPoints)
       .where(isRowActive(meetingPoints))
       .orderBy(asc(meetingPoints.name));
+  }),
+
+  /**
+   * Armada yang boleh dipamerkan di halaman publik.
+   *
+   * Hanya unit yang ditandai `tampilPublik` oleh pengelola DAN berstatus
+   * aktif. Unit yang sedang diperbaiki tidak ikut, karena memamerkan unit
+   * yang tidak bisa dipakai cuma memancing pertanyaan yang tidak perlu.
+   */
+  getArmadaPublik: publicProcedure.query(async ({ ctx }) => {
+    const armada = await ctx.db
+      .select({
+        id: jeeps.id,
+        name: jeeps.name,
+        plateNumber: jeeps.plateNumber,
+        capacity: jeeps.capacity,
+      })
+      .from(jeeps)
+      .where(
+        and(
+          eq(jeeps.tampilPublik, true),
+          eq(jeeps.status, "active"),
+          isNull(jeeps.deletedAt),
+        ),
+      )
+      .orderBy(asc(jeeps.plateNumber));
+
+    if (armada.length === 0) return [];
+
+    const foto = await ctx.db
+      .select()
+      .from(jeepGalleries)
+      .where(
+        inArray(
+          jeepGalleries.jeepId,
+          armada.map((unit) => unit.id),
+        ),
+      )
+      .orderBy(asc(jeepGalleries.sortOrder), asc(jeepGalleries.createdAt));
+
+    const perUnit = new Map<string, typeof foto>();
+    for (const gambar of foto) {
+      const daftar = perUnit.get(gambar.jeepId) ?? [];
+      daftar.push(gambar);
+      perUnit.set(gambar.jeepId, daftar);
+    }
+
+    // Unit tanpa foto tidak ikut: seksi armada gunanya memperlihatkan
+    // kondisi Jeep, dan kartu berisi gambar cadangan tidak membuktikan apa pun.
+    return armada
+      .map((unit) => ({ ...unit, images: perUnit.get(unit.id) ?? [] }))
+      .filter((unit) => unit.images.length > 0);
   }),
 
   /** Layanan tambahan aktif yang bisa dipilih saat memesan. Publik. */

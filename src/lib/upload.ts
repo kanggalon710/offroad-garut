@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
@@ -56,4 +56,40 @@ export async function processAndSaveUpload({
 
   await writeFile(filePath, buffer);
   return `/uploads/${subfolder}/${filename}`;
+}
+
+/**
+ * Menghapus berkas unggahan dari disk berdasarkan URL publiknya.
+ *
+ * Baris database yang dihapus WAJIB ikut menghapus berkasnya, kalau tidak
+ * disk perlahan penuh oleh berkas yatim yang setahun kemudian tidak ada yang
+ * bisa mengenali lagi milik siapa.
+ *
+ * Mengembalikan false, bukan melempar, kalau berkasnya memang sudah tidak ada.
+ * Kegagalan menghapus berkas tidak boleh membatalkan penghapusan barisnya:
+ * baris yang tertinggal menunjuk gambar yang hilang jauh lebih merepotkan
+ * daripada satu berkas yatim.
+ */
+export async function hapusBerkasUnggahan(publicUrl: string): Promise<boolean> {
+  // Hanya melayani berkas milik sendiri. URL dari luar (Google Drive, YouTube)
+  // maupun jalur yang mencoba keluar dari direktori unggahan diabaikan.
+  if (!publicUrl.startsWith("/uploads/")) return false;
+
+  const akar = path.join(process.cwd(), "public", "uploads");
+  const target = path.resolve(
+    process.cwd(),
+    "public",
+    `.${publicUrl}`.replace(/^\.\//, ""),
+  );
+
+  // Penjaga kedua: hasil resolve harus tetap di dalam direktori unggahan,
+  // supaya "/uploads/../../etc/passwd" tidak bisa menghapus apa pun.
+  if (target !== akar && !target.startsWith(akar + path.sep)) return false;
+
+  try {
+    await unlink(target);
+    return true;
+  } catch {
+    return false;
+  }
 }

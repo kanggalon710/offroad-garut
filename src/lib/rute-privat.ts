@@ -19,6 +19,7 @@ export const RUTE_PENGELOLA = [
   "/packages",
   "/pembaruan",
   "/seo",
+  "/laporan",
 ] as const;
 
 /**

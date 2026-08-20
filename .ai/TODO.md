@@ -11,6 +11,24 @@ pemilik project.
 
 ## Prioritas tinggi
 
+- [x] 2026-08-20 **PIN /pembaruan mustahil diganti.** Form tidak punya kolom PIN lama
+      sedangkan server mewajibkannya, jadi layar wajib-ganti-PIN pertama buntu total.
+
+- [x] 2026-08-20 **`/api/upload` menolak `super_admin`.** Pengecekan peran ditulis ulang
+      di luar `isStaff`. Ditambah tes yang memindai seluruh `src/` untuk kelas cacat ini.
+
+- [x] 2026-08-20 **Foto armada Jeep dan halaman Laporan operasional.**
+
+- [ ] **Target sentuh di bawah 44px yang tersisa, semuanya pihak ketiga atau lama.**
+      Tombol zoom Leaflet (30px) dan tautan atribusinya (14px) datang dari pustaka peta,
+      dan tautan nomor telepon di footer 17px. Atribusi Leaflet wajib ada dan memang
+      kecil, jadi yang realistis diperbaiki cuma yang di footer.
+
+- [ ] **`next.config.ts` masih memuat kunci `swcMinify` yang tidak dikenal.** Next
+      mencetak peringatan di setiap start. Tidak merusak apa pun, tapi peringatan yang
+      dibiarkan lama-lama membuat peringatan lain ikut diabaikan.
+
+
 - [x] 2026-08-20 **Build CI ditolak GitHub karena `.next/cache`.** Cache webpack 150 MB
       lewat batas keras 100 MB per berkas. Dikecualikan dari branch hasil build, plus
       penjaga ukuran yang gagal sebelum push.

@@ -47,5 +47,6 @@ export const config = {
     "/packages/:path*",
     "/pembaruan/:path*",
     "/seo/:path*",
+    "/laporan/:path*",
   ],
 };

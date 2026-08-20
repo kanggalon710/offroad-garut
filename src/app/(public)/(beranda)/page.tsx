@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { env } from "@/env";
+import { Armada, type UnitArmada } from "@/components/landing/armada";
 import { Faq } from "@/components/landing/faq";
 import { FinalCta } from "@/components/landing/final-cta";
 import { Gallery } from "@/components/landing/gallery";
@@ -89,10 +90,25 @@ async function loadPackages(): Promise<HasilPaket> {
   }
 }
 
+/**
+ * Armada tidak pernah menjatuhkan halaman. Kalau gagal dimuat, seksinya
+ * cuma tidak muncul, sama seperti saat belum ada unit yang ditandai publik.
+ */
+async function loadArmada(): Promise<UnitArmada[]> {
+  try {
+    const api = await getServerApi();
+    return await api.booking.getArmadaPublik();
+  } catch (error) {
+    catatKegagalanDatabase("armada", error);
+    return [];
+  }
+}
+
 export default async function LandingPage() {
-  const [hasil, pengaturan] = await Promise.all([
+  const [hasil, pengaturan, armada] = await Promise.all([
     loadPackages(),
     bacaPengaturanSitus(),
+    loadArmada(),
   ]);
 
   return (
@@ -112,6 +128,7 @@ export default async function LandingPage() {
           hasil.status === "gagal" ? hasil.petunjukPengembang : null
         }
       />
+      <Armada armada={armada} />
       <MeetingPoint />
       <Faq />
       <FinalCta />

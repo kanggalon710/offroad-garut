@@ -6,30 +6,40 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ImageLightbox } from "@/components/ui/image-lightbox";
 
-type PackageImageItem = {
+export type GambarGaleri = {
   id: string;
   imageUrl: string;
   alt?: string | null;
 };
 
 type Props = {
-  images: PackageImageItem[];
+  images: GambarGaleri[];
   fallbackImage?: string;
-  packageName: string;
+  /**
+   * Nama objek yang difoto, dipakai menyusun alt cadangan. Sertakan
+   * jenisnya sekalian ("paket Sunrise Cikuray", "Jeep Willys Hijau"),
+   * karena komponen ini melayani halaman paket maupun daftar armada dan
+   * tidak boleh menebak sendiri objeknya benda apa.
+   */
+  namaObjek: string;
 };
 
-export function PackageGalleryCarousel({
+/**
+ * Carousel dengan tombol panah, deretan thumbnail, dan klik untuk memperbesar
+ * lewat ImageLightbox.
+ */
+export function GaleriCarousel({
   images,
   fallbackImage = "/images/paket-kebun-teh.jpg",
-  packageName,
+  namaObjek,
 }: Props) {
   // If images array is empty, use fallback image as single item
-  const displayImages: PackageImageItem[] = useMemo(
+  const displayImages: GambarGaleri[] = useMemo(
     () =>
       images.length > 0
         ? images
-        : [{ id: "fallback", imageUrl: fallbackImage, alt: packageName }],
-    [images, fallbackImage, packageName],
+        : [{ id: "fallback", imageUrl: fallbackImage, alt: namaObjek }],
+    [images, fallbackImage, namaObjek],
   );
 
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -61,9 +71,9 @@ export function PackageGalleryCarousel({
     () =>
       displayImages.map((img, idx) => ({
         src: img.imageUrl,
-        alt: img.alt ?? `Foto ${idx + 1} paket ${packageName}`,
+        alt: img.alt ?? `Foto ${idx + 1} ${namaObjek}`,
       })),
-    [displayImages, packageName],
+    [displayImages, namaObjek],
   );
 
   const activeImage = displayImages[currentIndex] ?? displayImages[0]!;
@@ -78,7 +88,7 @@ export function PackageGalleryCarousel({
       >
         <Image
           src={activeImage.imageUrl}
-          alt={activeImage.alt ?? `Foto ${currentIndex + 1} paket ${packageName}`}
+          alt={activeImage.alt ?? `Foto ${currentIndex + 1} ${namaObjek}`}
           fill
           priority={currentIndex === 0}
           sizes="(max-width: 1024px) 100vw, 66vw"
@@ -96,7 +106,7 @@ export function PackageGalleryCarousel({
                 e.stopPropagation();
                 goToPrev();
               }}
-              className="absolute left-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="absolute left-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <ChevronLeft className="size-6" />
             </button>
@@ -108,7 +118,7 @@ export function PackageGalleryCarousel({
                 e.stopPropagation();
                 goToNext();
               }}
-              className="absolute right-3 top-1/2 flex size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="absolute right-3 top-1/2 flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition hover:bg-black/70 focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <ChevronRight className="size-6" />
             </button>
@@ -120,7 +130,7 @@ export function PackageGalleryCarousel({
           type="button"
           aria-label="Perbesar gambar"
           onClick={() => setIsLightboxOpen(true)}
-          className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-[var(--radius-control)] bg-black/50 px-3 py-1.5 text-legal font-medium text-white backdrop-blur-sm transition hover:bg-black/70"
+          className="absolute bottom-3 right-3 flex min-h-11 items-center gap-1.5 rounded-[var(--radius-control)] bg-black/50 px-3 text-legal font-medium text-white backdrop-blur-sm transition hover:bg-black/70"
         >
           <Maximize2 className="size-3.5" />
           <span>Zoom</span>
