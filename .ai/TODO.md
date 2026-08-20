@@ -11,6 +11,26 @@ pemilik project.
 
 ## Prioritas tinggi
 
+- [x] 2026-08-20 **Build CI ditolak GitHub karena `.next/cache`.** Cache webpack 150 MB
+      lewat batas keras 100 MB per berkas. Dikecualikan dari branch hasil build, plus
+      penjaga ukuran yang gagal sebelum push.
+
+- [x] 2026-08-20 **Tiga status paket dan tombol jeda cepat.** Menjeda tidak lagi membuat
+      halaman membalas 404 dan membuang peringkatnya.
+
+- [x] 2026-08-20 **Halaman Kelola SEO.** Metadata dan info usaha bisa diubah sendiri,
+      plus audit yang membaca paket dan album live.
+
+- [ ] **Perpendek deskripsi paket seed.** Audit menemukan tiga paket dengan deskripsi
+      201 sampai 229 karakter, sedangkan Google memotong di sekitar 160. Ekor kalimatnya
+      tidak akan pernah terbaca di hasil pencarian. Ada di `src/lib/db/seed.ts` dan di
+      database produksi, jadi perlu diperbaiki di keduanya.
+
+- [ ] **Isi pengaturan di `/seo` pada produksi.** Selama tabelnya kosong, situs memakai
+      nilai bawaan dari `src/lib/site.ts`, yang benar tapi belum tentu yang diinginkan
+      pemilik. Yang paling berdampak: tautan Google Business Profile dan Instagram.
+
+
 - [x] 2026-08-20 **Add-on bisa dipilih pelanggan saat memesan.** Punggungnya sudah ada
       sejak migrasi `0002` tapi tidak ada pilihannya di form. Ditambah satuan harga
       (`per_pax` / `per_booking`) dan snapshot `unit_price_idr`.
@@ -27,9 +47,9 @@ pemilik project.
       `https://garutoffroad.com/sitemap.xml`. Tanpa langkah ini data terstruktur yang
       baru dipasang tidak akan terpakai secepat yang bisa.
 
-- [ ] **Isi `site.sameAs` di `src/lib/site.ts`** dengan tautan Google Business Profile
-      dan Instagram kalau ada. Sengaja dikosongkan, bukan diisi tebakan: URL karangan di
-      data terstruktur justru membuat Google meragukan identitas usahanya.
+- [x] 2026-08-20 **`sameAs` sekarang diisi lewat halaman Kelola SEO**, tidak lagi perlu
+      developer. Pemilik tinggal menempelkan tautan Google Business Profile dan Instagram
+      di tab Info Usaha.
 
 - [ ] **Sediakan gambar Open Graph khusus berukuran 1200x630.** Sekarang memakai
       `hero-offroad-garut.jpg` dengan dimensi yang dideklarasikan 1200x630, padahal

@@ -1,5 +1,7 @@
 import { env } from "@/env";
 import { faqs } from "@/lib/faq";
+import type { PackageStatus } from "@/lib/db/schema";
+import type { PengaturanSitus } from "@/lib/pengaturan-situs";
 import { site } from "@/lib/site";
 
 /**
@@ -24,10 +26,7 @@ export function canonical(path: string) {
 }
 
 /** Jam operasional dari site.ts jadi bentuk yang dipahami schema.org. */
-function jamBuka() {
-  // "Setiap hari, 06.00 - 17.00 WIB" tidak bisa dibaca mesin, jadi
-  // bentuk terstrukturnya ditulis di sini sekali. Kalau jamnya berubah,
-  // teks di site.ts dan blok ini berubah bersama.
+function jamBuka(pengaturan: PengaturanSitus) {
   return {
     "@type": "OpeningHoursSpecification",
     dayOfWeek: [
@@ -39,8 +38,8 @@ function jamBuka() {
       "Saturday",
       "Sunday",
     ],
-    opens: "06:00",
-    closes: "17:00",
+    opens: pengaturan.opensAt,
+    closes: pengaturan.closesAt,
   };
 }
 
@@ -48,40 +47,40 @@ function jamBuka() {
  * Usaha itu sendiri. Inilah yang membuat Offroad Garut bisa muncul di
  * hasil pencarian lokal lengkap dengan alamat, peta, dan jam buka.
  */
-export function bisnisLokalJsonLd() {
+export function bisnisLokalJsonLd(pengaturan: PengaturanSitus) {
   return {
     "@context": "https://schema.org",
     "@type": "TouristInformationCenter",
     "@id": `${urlPenuh("/")}#bisnis`,
-    name: site.name,
+    name: pengaturan.businessName,
     description: site.tagline,
     url: urlPenuh("/"),
-    telephone: site.whatsapp,
-    image: urlPenuh("/images/hero-offroad-garut.jpg"),
-    priceRange: site.priceRange,
+    telephone: pengaturan.phone,
+    image: urlPenuh(pengaturan.ogImageUrl),
+    priceRange: pengaturan.priceRange,
     address: {
       "@type": "PostalAddress",
-      streetAddress: site.basecamp.address,
-      addressLocality: "Cikajang",
-      addressRegion: "Jawa Barat",
+      streetAddress: pengaturan.address,
+      addressLocality: pengaturan.locality,
+      addressRegion: pengaturan.region,
       addressCountry: "ID",
     },
     geo: {
       "@type": "GeoCoordinates",
-      latitude: site.basecamp.lat,
-      longitude: site.basecamp.lng,
+      latitude: pengaturan.latitude,
+      longitude: pengaturan.longitude,
     },
-    openingHoursSpecification: [jamBuka()],
-    ...(site.sameAs.length > 0 ? { sameAs: [...site.sameAs] } : {}),
+    openingHoursSpecification: [jamBuka(pengaturan)],
+    ...(pengaturan.sameAs.length > 0 ? { sameAs: pengaturan.sameAs } : {}),
   };
 }
 
-export function situsJsonLd() {
+export function situsJsonLd(pengaturan: PengaturanSitus) {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     "@id": `${urlPenuh("/")}#situs`,
-    name: site.name,
+    name: pengaturan.businessName,
     url: urlPenuh("/"),
     inLanguage: "id-ID",
   };
@@ -106,6 +105,7 @@ type PaketUntukJsonLd = {
   description: string | null;
   pricePerPaxIdr: number;
   durationHours: number;
+  status: PackageStatus;
   images: { imageUrl: string }[];
 };
 
@@ -131,7 +131,18 @@ export function paketJsonLd(pkg: PaketUntukJsonLd) {
       url: alamat,
       price: pkg.pricePerPaxIdr,
       priceCurrency: "IDR",
-      availability: "https://schema.org/InStock",
+      /**
+       * Paket yang sedang dijeda ditandai OutOfStock, BUKAN dicabut dari
+       * indeks lewat noindex. Ini cara Google menangani produk yang
+       * sementara tidak tersedia: halamannya tetap punya peringkat, dan
+       * hasil pencariannya menunjukkan bahwa layanannya sedang kosong.
+       * Memakai noindex justru membuang peringkat itu, hampir sama
+       * ruginya dengan membalas 404.
+       */
+      availability:
+        pkg.status === "dijeda"
+          ? "https://schema.org/OutOfStock"
+          : "https://schema.org/InStock",
       // Harga per orang, bukan harga satu rombongan. Tanpa keterangan ini
       // hasil pencarian akan terbaca seolah satu Jeep seharga itu.
       priceSpecification: {

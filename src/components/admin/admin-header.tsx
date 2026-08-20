@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   ListChecks,
   LogOut,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -27,6 +28,7 @@ const tabs = [
   { href: "/orders", label: "Semua pesanan", icon: ListChecks, matches: ["/orders"] },
   { href: "/master", label: "Kelola Master Data", icon: Database, matches: ["/master", "/packages"] },
   { href: "/gallery", label: "Kelola Galeri & Album", icon: ImageIcon, matches: ["/gallery"] },
+  { href: "/seo", label: "Kelola SEO", icon: Search, matches: ["/seo"] },
 ];
 
 /** Hanya super admin yang boleh memperbarui aplikasi, jadi tabnya pun begitu. */

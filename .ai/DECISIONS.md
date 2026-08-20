@@ -11,6 +11,82 @@ kutipan PRD, masalah, dan tindakan.
 
 ---
 
+## 2026-08-20 - Paket dijeda ditandai OutOfStock, bukan noindex atau 404
+
+**Konteks.** Pemilik butuh cara menjeda layanan sementara. Sebelumnya boolean
+`is_active`, dan menonaktifkannya membuat `getPackageBySlug` melempar NOT_FOUND
+sehingga halamannya membalas 404.
+
+**Opsi.** (1) Tetap 404. (2) Halaman hidup tapi `noindex`. (3) Halaman hidup, tetap
+terindeks, ketersediaannya ditandai `OutOfStock` di data terstruktur.
+
+**Pilihan.** Opsi 3, dengan status ketiga "tersembunyi" yang tetap 404 untuk yang
+memang mau dimatikan permanen.
+
+**Alasan.** 404 memberi tahu mesin pencari bahwa halamannya hilang permanen, jadi
+peringkat yang dikumpulkan berbulan-bulan dibuang dan harus dibangun ulang dari nol
+saat paketnya dibuka lagi. `noindex` terdengar lebih lembut tapi akibatnya hampir
+sama: ia mencabut halaman dari indeks secara aktif. `OutOfStock` adalah cara yang
+memang disediakan schema.org dan dipahami Google untuk produk yang sementara tidak
+tersedia; halamannya tetap punya peringkat, dan hasil pencariannya menunjukkan
+layanannya sedang kosong.
+
+**Konsekuensi.** Paket dijeda tetap muncul di hasil pencarian dan tetap ada di
+sitemap. Kalau suatu saat pemilik justru tidak mau paket kosong terlihat di Google,
+jalannya adalah memakai status "tersembunyi", bukan menambahkan `noindex` ke status
+"dijeda". Tombol pesan dimatikan di UI DAN pemesanannya ditolak di server, karena
+tombol yang hilang tidak menghentikan siapa pun yang memanggil prosedurnya langsung.
+
+---
+
+## 2026-08-20 - Runner migrasi menoleransi 1091, dan backfill dijaga information_schema
+
+**Konteks.** Migrasi dijalankan ulang setiap boot Passenger, jadi wajib idempoten.
+Migrasi `0006` perlu menambah kolom, mengisinya dari kolom lama, lalu membuang kolom
+lama itu.
+
+**Opsi.** (1) Jangan buang `is_active`, biarkan menganggur. (2) Buang, dan toleransi
+1054 "Unknown column" secara umum. (3) Buang, toleransi 1091 untuk DROP, dan bungkus
+backfill-nya dengan penjaga `information_schema` lewat prepared statement.
+
+**Pilihan.** Opsi 3.
+
+**Alasan.** Opsi 1 meninggalkan dua kolom yang menyatakan hal sama, dan cepat atau
+lambat ada yang membaca kolom lama lalu menjual paket yang sudah dijeda. Opsi 2
+berbahaya dengan cara yang tidak kelihatan: menoleransi 1054 berarti salah ketik nama
+kolom di migrasi mana pun akan ditelan diam-diam, dan migrasi yang "sukses" padahal
+tidak melakukan apa-apa jauh lebih sulit didiagnosis daripada yang gagal berisik.
+
+**Konsekuensi.** Migrasi yang membuang sesuatu sekarang aman diulang. Backfill yang
+menyebut kolom yang akan dibuang harus memakai pola penjaga yang sama; menulisnya
+polos akan membuat setiap boot berikutnya gagal.
+
+---
+
+## 2026-08-20 - Metadata SEO pindah ke database dengan nilai bawaan di kode
+
+**Konteks.** Judul, deskripsi, alamat, jam buka, dan nomor ada di `src/lib/site.ts`.
+Semuanya memberi makan data terstruktur, dan memperbaiki satu huruf butuh developer
+plus satu siklus deploy.
+
+**Opsi.** (1) Tetap di kode. (2) Pindah seluruhnya ke database. (3) Database sebagai
+sumber utama, `site.ts` jadi nilai bawaan.
+
+**Pilihan.** Opsi 3.
+
+**Alasan.** `generateMetadata` berjalan di setiap halaman publik. Kalau ia melempar
+error, yang jatuh bukan cuma tag metadata melainkan seluruh halaman. Menaruh sumbernya
+di database tanpa jalur mundur berarti satu tabel pengaturan bisa mematikan situs.
+Dengan nilai bawaan di kode, database yang mati cuma membuat judulnya kembali ke versi
+lama, dan situsnya tetap tayang.
+
+**Konsekuensi.** Ada dua tempat yang memuat teks metadata, tapi perannya jelas berbeda
+dan yang di kode tidak pernah dibaca kecuali sebagai jalur mundur. Pembacaan dibungkus
+`cache()` React, jadi satu request satu query dan tidak ada cache lintas request yang
+perlu di-invalidasi: simpan, muat ulang, berubah.
+
+---
+
 ## 2026-08-20 - Jumlah add-on dihitung server, satuannya masuk skema
 
 **Konteks.** Riset operator offroad di Garut, Pangalengan, Lembang, dan Sentul

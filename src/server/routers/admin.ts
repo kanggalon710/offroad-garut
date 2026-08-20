@@ -17,6 +17,9 @@ import {
 } from "@/lib/db/schema";
 import { adminProcedure, router } from "../trpc";
 
+/** Satu sumber untuk validasi status paket di seluruh prosedur. */
+const STATUS_PAKET = z.enum(["aktif", "dijeda", "tersembunyi"]);
+
 /** Pesanan yang sudah dibatalkan tidak lagi mengunci armada. */
 const ACTIVE_BOOKING_STATUSES = [
   "paid",
@@ -467,6 +470,89 @@ export const adminRouter = router({
       return { success: true as const };
     }),
 
+  /* ====== Ubah status cepat tanpa membuka dialog edit ====== */
+
+  /**
+   * Mengubah status jual paket dari kartu daftar, tanpa mengirim ulang
+   * seluruh isi paket. Prosedur terpisah dari updatePackage supaya menjeda
+   * layanan tidak berisiko menimpa harga atau deskripsi dengan nilai basi
+   * dari layar yang sudah lama terbuka.
+   */
+  ubahStatusPaket: adminProcedure
+    .input(z.object({ id: z.string().uuid(), status: STATUS_PAKET }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(packages)
+          .set({ status: input.status, updatedAt: new Date() })
+          .where(and(eq(packages.id, input.id), isNull(packages.deletedAt)));
+
+        await catatAudit(tx, {
+          tableName: "packages",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: { status: input.status },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  /**
+   * Add-on dan titik kumpul tetap dua keadaan saja. Keduanya tidak punya
+   * halaman publik sendiri, jadi beda "dijeda" dan "tersembunyi" tidak ada
+   * artinya di sana: sebuah layanan tambahan itu ditawarkan atau tidak.
+   */
+  ubahStatusAddOn: adminProcedure
+    .input(z.object({ id: z.string().uuid(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(addOnServices)
+          .set({ isActive: input.isActive, updatedAt: new Date() })
+          .where(
+            and(
+              eq(addOnServices.id, input.id),
+              isNull(addOnServices.deletedAt),
+            ),
+          );
+
+        await catatAudit(tx, {
+          tableName: "add_on_services",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: { isActive: input.isActive },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
+  ubahStatusTitikKumpul: adminProcedure
+    .input(z.object({ id: z.string().uuid(), isActive: z.boolean() }))
+    .mutation(async ({ ctx, input }) => {
+      await ctx.db.transaction(async (tx) => {
+        await tx
+          .update(meetingPoints)
+          .set({ isActive: input.isActive, updatedAt: new Date() })
+          .where(
+            and(
+              eq(meetingPoints.id, input.id),
+              isNull(meetingPoints.deletedAt),
+            ),
+          );
+
+        await catatAudit(tx, {
+          tableName: "meeting_points",
+          recordId: input.id,
+          action: "UPDATE",
+          newData: { isActive: input.isActive },
+          changedBy: ctx.user.id,
+        });
+      });
+      return { success: true as const };
+    }),
+
   /* =========== Master Data CRUD: Packages =========== */
 
   getPackages: adminProcedure.query(async ({ ctx }) => {
@@ -491,7 +577,7 @@ export const adminRouter = router({
         pricePerPaxIdr: z.number().int().min(0),
         minPax: z.number().int().min(1).default(3),
         maxPax: z.number().int().min(1).max(500).default(100),
-        isActive: z.boolean().default(true),
+        status: STATUS_PAKET.default("aktif"),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -506,7 +592,7 @@ export const adminRouter = router({
           pricePerPaxIdr: input.pricePerPaxIdr,
           minPax: input.minPax,
           maxPax: input.maxPax,
-          isActive: input.isActive,
+          status: input.status,
         });
         await catatAudit(tx, {
           tableName: "packages",
@@ -530,7 +616,7 @@ export const adminRouter = router({
         pricePerPaxIdr: z.number().int().min(0),
         minPax: z.number().int().min(1),
         maxPax: z.number().int().min(1).max(500),
-        isActive: z.boolean(),
+        status: STATUS_PAKET,
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -545,7 +631,7 @@ export const adminRouter = router({
             pricePerPaxIdr: input.pricePerPaxIdr,
             minPax: input.minPax,
             maxPax: input.maxPax,
-            isActive: input.isActive,
+            status: input.status,
             updatedAt: new Date(),
           })
           .where(eq(packages.id, input.id));
@@ -759,7 +845,11 @@ export const adminRouter = router({
       await ctx.db.transaction(async (tx) => {
         await tx
           .update(packages)
-          .set({ deletedAt: new Date(), isActive: false, updatedAt: new Date() })
+          .set({
+            deletedAt: new Date(),
+            status: "tersembunyi",
+            updatedAt: new Date(),
+          })
           .where(eq(packages.id, input.id));
         await catatAudit(tx, {
           tableName: "packages",

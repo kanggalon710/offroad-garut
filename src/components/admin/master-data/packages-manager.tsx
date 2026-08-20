@@ -12,7 +12,6 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardActions } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -23,8 +22,16 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
+import { TogglePaket } from "@/components/admin/status-toggle";
+import {
+  PACKAGE_STATUS_LABEL,
+  PACKAGE_STATUS_OPTIONS,
+  PACKAGE_STATUS_TONE,
+} from "@/lib/constants";
+import type { PackageStatus } from "@/lib/db/schema";
 import { formatIDR } from "@/lib/utils";
 import { api } from "@/trpc/client";
 
@@ -47,8 +54,16 @@ export function PackagesManager() {
   const [pricePerPaxIdr, setPricePerPaxIdr] = useState(350000);
   const [minPax, setMinPax] = useState(3);
   const [maxPax, setMaxPax] = useState(100);
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState<PackageStatus>("aktif");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const statusMutation = api.admin.ubahStatusPaket.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.admin.getPackages.invalidate();
+      toast(`Status paket diubah jadi ${PACKAGE_STATUS_LABEL[variables.status]}.`);
+    },
+    onError: (err) => setErrorMsg(err.message),
+  });
 
   const createMutation = api.admin.createPackage.useMutation({
     onSuccess: (data) => {
@@ -70,7 +85,7 @@ export function PackagesManager() {
 
   function resetForm() {
     setName(""); setSlug(""); setDescription("");
-    setDurationHours(3); setPricePerPaxIdr(350000); setMinPax(3); setMaxPax(100); setIsActive(true); setErrorMsg(null);
+    setDurationHours(3); setPricePerPaxIdr(350000); setMinPax(3); setMaxPax(100); setStatus("aktif"); setErrorMsg(null);
   }
 
   function handleSubmit(e: React.FormEvent) {
@@ -84,7 +99,7 @@ export function PackagesManager() {
       pricePerPaxIdr,
       minPax,
       maxPax,
-      isActive,
+      status,
     });
   }
 
@@ -115,8 +130,8 @@ export function PackagesManager() {
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <h3 className="font-bold text-foreground">{item.name}</h3>
-                  <Badge tone={item.isActive ? "forest" : "neutral"}>
-                    {item.isActive ? "Aktif" : "Non-aktif"}
+                  <Badge tone={PACKAGE_STATUS_TONE[item.status]}>
+                    {PACKAGE_STATUS_LABEL[item.status]}
                   </Badge>
                 </div>
                 <p className="text-legal text-muted-foreground">/{item.slug}</p>
@@ -129,6 +144,13 @@ export function PackagesManager() {
               </div>
 
               <CardActions>
+                <TogglePaket
+                  status={item.status}
+                  pending={statusMutation.isPending}
+                  onChange={(status) =>
+                    statusMutation.mutate({ id: item.id, status })
+                  }
+                />
                 <Button variant="outline" asChild>
                   <Link href={`/packages/${item.id}`}>
                     <Edit2 className="size-4" aria-hidden="true" />
@@ -193,13 +215,19 @@ export function PackagesManager() {
                 <Input id="pkg-maxpax" type="number" value={maxPax} onChange={(e) => setMaxPax(Number(e.target.value))} required />
               </Field>
             </div>
-            <Checkbox
-              id="pkg-active"
-              label="Status aktif"
-              hint="Dijual di halaman publik."
-              checked={isActive}
-              onCheckedChange={setIsActive}
-            />
+            <Field id="pkg-status" label="Status jual" required>
+              <Select
+                id="pkg-status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as PackageStatus)}
+              >
+                {PACKAGE_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </Field>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setCreateDialogOpen(false)}>Batal</Button>
               <Button type="submit" disabled={createMutation.isPending}>

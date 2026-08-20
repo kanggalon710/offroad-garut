@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@/components/ui/badge";
-import type { AddOnPricingUnit } from "@/lib/db/schema";
+import type { AddOnPricingUnit, PackageStatus } from "@/lib/db/schema";
 
 /** Jam keberangkatan yang dilayani basecamp. */
 export const TIME_SLOTS = [
@@ -69,6 +69,41 @@ export type JeepStatus = "active" | "maintenance" | "retired";
 export const JEEP_STATUS_OPTIONS = (
   Object.keys(JEEP_STATUS_LABEL) as JeepStatus[]
 ).map((value) => ({ value, label: JEEP_STATUS_LABEL[value] }));
+
+/**
+ * Status penjualan paket. Tiga nilai, bukan boolean, karena "tidak dijual"
+ * punya dua arti yang akibatnya jauh berbeda di mesin pencari. Keterangannya
+ * ditulis panjang di sini supaya pengelola tahu persis apa yang terjadi
+ * sebelum memilih, bukan menebak dari namanya.
+ */
+export const PACKAGE_STATUS_LABEL: Record<PackageStatus, string> = {
+  aktif: "Dijual",
+  dijeda: "Dijeda",
+  tersembunyi: "Disembunyikan",
+};
+
+export const PACKAGE_STATUS_TONE: Record<PackageStatus, BadgeTone> = {
+  aktif: "success",
+  dijeda: "warning",
+  tersembunyi: "neutral",
+};
+
+export const PACKAGE_STATUS_HINT: Record<PackageStatus, string> = {
+  aktif: "Dijual - tampil di beranda dan bisa dipesan",
+  dijeda:
+    "Dijeda - halaman tetap bisa dibuka tapi tombol pesan mati, diganti tombol WhatsApp",
+  tersembunyi:
+    "Disembunyikan - halaman hilang sepenuhnya, peringkat pencariannya ikut hilang",
+};
+
+export const PACKAGE_STATUS_OPTIONS = (
+  Object.keys(PACKAGE_STATUS_LABEL) as PackageStatus[]
+).map((value) => ({ value, label: PACKAGE_STATUS_HINT[value] }));
+
+/** Teks yang dilihat tamu pada paket yang sedang dijeda. */
+export const PAKET_DIJEDA_JUDUL = "Sementara tidak tersedia";
+export const PAKET_DIJEDA_KETERANGAN =
+  "Paket ini sedang tidak dibuka. Hubungi kami lewat WhatsApp untuk menanyakan kapan jadwalnya dibuka lagi.";
 
 /**
  * Satuan harga layanan tambahan. Labelnya dipakai bersama form pengelola,

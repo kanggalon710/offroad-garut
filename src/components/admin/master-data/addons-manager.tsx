@@ -22,6 +22,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { ToggleAktif } from "@/components/admin/status-toggle";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
 import {
@@ -46,6 +47,18 @@ export function AddOnsManager() {
     useState<AddOnPricingUnit>("per_booking");
   const [isActive, setIsActive] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const statusMutation = api.admin.ubahStatusAddOn.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.admin.getAddOns.invalidate();
+      toast(
+        variables.isActive
+          ? "Layanan tambahan diaktifkan lagi."
+          : "Layanan tambahan dinonaktifkan.",
+      );
+    },
+    onError: (err) => setErrorMsg(err.message),
+  });
 
   const createMutation = api.admin.createAddOn.useMutation({
     onSuccess: () => {
@@ -150,6 +163,14 @@ export function AddOnsManager() {
               </div>
 
               <CardActions>
+                <ToggleAktif
+                  isActive={item.isActive}
+                  namaJenis="layanan tambahan"
+                  pending={statusMutation.isPending}
+                  onChange={(isActive) =>
+                    statusMutation.mutate({ id: item.id, isActive })
+                  }
+                />
                 <Button
                   variant="outline"
                   onClick={() => {

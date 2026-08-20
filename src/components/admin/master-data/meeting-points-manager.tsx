@@ -23,6 +23,7 @@ import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
+import { ToggleAktif } from "@/components/admin/status-toggle";
 import { api } from "@/trpc/client";
 
 export function MeetingPointsManager() {
@@ -38,6 +39,18 @@ export function MeetingPointsManager() {
   const [longitude, setLongitude] = useState(107.9087);
   const [isActive, setIsActive] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const statusMutation = api.admin.ubahStatusTitikKumpul.useMutation({
+    onSuccess: (_data, variables) => {
+      void utils.admin.getMeetingPointsAdmin.invalidate();
+      toast(
+        variables.isActive
+          ? "Titik kumpul diaktifkan lagi."
+          : "Titik kumpul dinonaktifkan.",
+      );
+    },
+    onError: (err) => setErrorMsg(err.message),
+  });
 
   const createMutation = api.admin.createMeetingPoint.useMutation({
     onSuccess: () => {
@@ -117,6 +130,14 @@ export function MeetingPointsManager() {
               </div>
 
               <CardActions>
+                <ToggleAktif
+                  isActive={item.isActive}
+                  namaJenis="titik kumpul"
+                  pending={statusMutation.isPending}
+                  onChange={(isActive) =>
+                    statusMutation.mutate({ id: item.id, isActive })
+                  }
+                />
                 <Button variant="outline" onClick={() => {
                   resetForm(); setEditingId(item.id); setName(item.name); setAddress(item.address ?? "");
                   setLatitude(Number(item.latitude)); setLongitude(Number(item.longitude)); setIsActive(item.isActive); setDialogOpen(true);

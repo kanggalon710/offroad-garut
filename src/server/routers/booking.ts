@@ -6,7 +6,11 @@ import { z } from "zod";
 import { env } from "@/env";
 import { hitungKuantitas } from "@/lib/add-on";
 import { isStaff } from "@/lib/roles";
-import { isRowActive } from "@/lib/db/active-row";
+import {
+  isRowActive,
+  paketBisaDipesan,
+  paketTampil,
+} from "@/lib/db/active-row";
 import {
   EMAIL_AKUN_DUMMY,
   MIN_PAX,
@@ -36,7 +40,7 @@ export const bookingRouter = router({
       const rows = await ctx.db
         .select()
         .from(packages)
-        .where(isRowActive(packages))
+        .where(paketTampil(packages))
         .orderBy(asc(packages.pricePerPaxIdr))
         .limit(input?.limit ?? 10);
 
@@ -72,7 +76,7 @@ export const bookingRouter = router({
         .where(
           and(
             isUuid ? eq(packages.id, input.slug) : eq(packages.slug, input.slug),
-            isRowActive(packages),
+            paketTampil(packages),
           ),
         )
         .limit(1);
@@ -99,7 +103,7 @@ export const bookingRouter = router({
       const [pkg] = await ctx.db
         .select()
         .from(packages)
-        .where(and(eq(packages.id, input.id), isRowActive(packages)))
+        .where(and(eq(packages.id, input.id), paketTampil(packages)))
         .limit(1);
 
       if (!pkg) {
@@ -277,7 +281,7 @@ export const bookingRouter = router({
       const [pkg] = await ctx.db
         .select()
         .from(packages)
-        .where(and(eq(packages.id, input.packageId), isRowActive(packages)))
+        .where(and(eq(packages.id, input.packageId), paketBisaDipesan(packages)))
         .limit(1);
 
       if (!pkg) {

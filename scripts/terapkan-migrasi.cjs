@@ -18,7 +18,13 @@ const mysql = require("mysql2/promise");
 // 1005: Can't create table / duplicate FK name
 // 1826: Duplicate foreign key constraint name
 // 1822: Failed to add foreign key constraint (already exists)
-const SUDAH_ADA = new Set([1050, 1061, 1060, 1005, 1826, 1822]);
+//
+// Kebalikannya, untuk pernyataan yang MENGHAPUS. Migrasi ini dijalankan ulang
+// setiap boot Passenger, jadi DROP COLUMN yang sudah berhasil sekali harus
+// boleh gagal diam-diam pada boot berikutnya. Tanpa 1091, satu migrasi berisi
+// DROP COLUMN akan membuat SETIAP boot sesudahnya gagal.
+// 1091: Can't DROP; check that column/key exists
+const SUDAH_ADA = new Set([1050, 1061, 1060, 1005, 1826, 1822, 1091]);
 
 function bacaEnv() {
   if (process.env.DATABASE_URL) return;

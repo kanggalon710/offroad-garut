@@ -18,7 +18,6 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Dialog,
@@ -29,8 +28,11 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
+import { PACKAGE_STATUS_OPTIONS } from "@/lib/constants";
+import type { PackageStatus } from "@/lib/db/schema";
 import { api } from "@/trpc/client";
 
 export function PackageEditorClient({ packageId }: { packageId: string }) {
@@ -49,7 +51,7 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
   const [pricePerPaxIdr, setPricePerPaxIdr] = useState(350000);
   const [minPax, setMinPax] = useState(3);
   const [maxPax, setMaxPax] = useState(100);
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState<PackageStatus>("aktif");
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -69,7 +71,7 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
       setPricePerPaxIdr(p.pricePerPaxIdr);
       setMinPax(p.minPax);
       setMaxPax(p.maxPax);
-      setIsActive(p.isActive);
+      setStatus(p.status);
     }
   }, [query.data]);
 
@@ -123,7 +125,7 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
       pricePerPaxIdr,
       minPax,
       maxPax,
-      isActive,
+      status,
     });
   }
 
@@ -431,13 +433,24 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
             </Field>
           </div>
 
-          <Checkbox
-            id="pkg-active"
-            label="Status aktif"
-            hint="Dijual di halaman publik."
-            checked={isActive}
-            onCheckedChange={setIsActive}
-          />
+          <Field
+            id="pkg-status"
+            label="Status jual"
+            required
+            hint="Menjeda hanya mematikan tombol pesan. Menyembunyikan membuat halamannya membalas 404, dan peringkat pencariannya ikut hilang."
+          >
+            <Select
+              id="pkg-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as PackageStatus)}
+            >
+              {PACKAGE_STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
 
           <div className="pt-2">
             <Button

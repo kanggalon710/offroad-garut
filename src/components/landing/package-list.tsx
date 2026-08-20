@@ -1,4 +1,10 @@
-import { ArrowRight, Clock, MessageCircle, Users } from "lucide-react";
+import {
+  ArrowRight,
+  Clock,
+  MessageCircle,
+  PauseCircle,
+  Users,
+} from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -6,6 +12,8 @@ import { Container, Section, SectionHeading } from "@/components/shared/containe
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { PAKET_DIJEDA_JUDUL } from "@/lib/constants";
+import type { PackageStatus } from "@/lib/db/schema";
 import { site } from "@/lib/site";
 import { formatIDR, waMeLink } from "@/lib/utils";
 
@@ -17,6 +25,7 @@ export type PackageCard = {
   durationHours: number;
   pricePerPaxIdr: number;
   minPax: number;
+  status: PackageStatus;
   images: { imageUrl: string; alt: string | null }[];
 };
 
@@ -106,6 +115,12 @@ export function PackageList({
                     <h3 className="text-title font-bold">{pkg.name}</h3>
 
                     <div className="mt-2 flex flex-wrap gap-2">
+                      {pkg.status === "dijeda" ? (
+                        <Badge tone="warning">
+                          <PauseCircle className="size-3.5" aria-hidden="true" />
+                          {PAKET_DIJEDA_JUDUL}
+                        </Badge>
+                      ) : null}
                       <Badge tone="forest">
                         <Clock className="size-3.5" aria-hidden="true" />
                         {pkg.durationHours} jam

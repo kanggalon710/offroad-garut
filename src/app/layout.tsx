@@ -3,6 +3,7 @@ import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 
 import { TRPCProvider } from "@/trpc/client";
 import { env } from "@/env";
+import { bacaPengaturanSitus } from "@/lib/pengaturan-situs";
 import { canonical, urlPenuh } from "@/lib/seo";
 
 import "./globals.css";
@@ -20,61 +21,63 @@ const inter = Inter({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
-  title: {
-    default: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
-    template: "%s | Offroad Garut",
-  },
-  description:
-    "Pesan paket offroad Jeep di Garut lewat website. Pilih paket, bayar online, tiket QR langsung masuk WhatsApp. Minimal 3 orang.",
-  keywords: [
-    "offroad garut",
-    "sewa jeep garut",
-    "wisata cikuray",
-    "paket offroad",
-  ],
-  alternates: canonical("/"),
-  icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
-  },
-  openGraph: {
-    type: "website",
-    locale: "id_ID",
-    siteName: "Offroad Garut",
-    url: urlPenuh("/"),
-    title: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
-    description:
-      "Pilih paket, bayar online, tiket QR langsung masuk WhatsApp. Minimal 3 orang.",
-    images: [
-      {
-        url: "/images/hero-offroad-garut.jpg",
-        // Dimensi eksplisit supaya WhatsApp dan Facebook tidak perlu
-        // mengunduh gambarnya dulu sebelum bisa menampilkan pratinjau.
-        width: 1200,
-        height: 630,
-        alt: "Jeep offroad menyusuri jalur tanah di kaki Gunung Cikuray, Garut",
-      },
-    ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray",
-    description:
-      "Pilih paket, bayar online, tiket QR langsung masuk WhatsApp. Minimal 3 orang.",
-    images: ["/images/hero-offroad-garut.jpg"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: { index: true, follow: true, "max-image-preview": "large" },
-  },
-};
+/**
+ * Metadata akar dibaca dari pengaturan situs supaya pemilik bisa mengubahnya
+ * sendiri lewat halaman Kelola SEO. Kalau tabelnya belum terisi atau database
+ * sedang mati, `bacaPengaturanSitus` jatuh ke nilai bawaan, jadi halaman tetap
+ * tayang dengan judul yang benar.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const pengaturan = await bacaPengaturanSitus();
+
+  return {
+    metadataBase: new URL(env.NEXT_PUBLIC_APP_URL),
+    title: {
+      default: pengaturan.metaTitle,
+      template: `%s | ${pengaturan.businessName}`,
+    },
+    description: pengaturan.metaDescription,
+    keywords: pengaturan.keywords,
+    alternates: canonical("/"),
+    icons: {
+      icon: [
+        { url: "/favicon.svg", type: "image/svg+xml" },
+        { url: "/icon.svg", type: "image/svg+xml" },
+      ],
+      shortcut: "/favicon.svg",
+      apple: "/favicon.svg",
+    },
+    openGraph: {
+      type: "website",
+      locale: "id_ID",
+      siteName: pengaturan.businessName,
+      url: urlPenuh("/"),
+      title: pengaturan.metaTitle,
+      description: pengaturan.metaDescription,
+      images: [
+        {
+          url: pengaturan.ogImageUrl,
+          // Dimensi eksplisit supaya WhatsApp dan Facebook tidak perlu
+          // mengunduh gambarnya dulu sebelum bisa menampilkan pratinjau.
+          width: 1200,
+          height: 630,
+          alt: pengaturan.metaTitle,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: pengaturan.metaTitle,
+      description: pengaturan.metaDescription,
+      images: [pengaturan.ogImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { index: true, follow: true, "max-image-preview": "large" },
+    },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",

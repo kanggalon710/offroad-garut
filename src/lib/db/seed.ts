@@ -129,7 +129,7 @@ async function seedPackages() {
       pricePerPaxIdr: seed.pricePerPaxIdr,
       minPax: seed.minPax,
       maxPax: seed.maxPax,
-      isActive: true,
+      status: "aktif",
     });
 
     await db.insert(packageGalleries).values({

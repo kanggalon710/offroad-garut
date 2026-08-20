@@ -12,23 +12,36 @@ import {
 } from "@/components/landing/package-list";
 import { JsonLd } from "@/components/shared/json-ld";
 import { catatKegagalanDatabase } from "@/lib/db/errors";
+import { bacaPengaturanSitus } from "@/lib/pengaturan-situs";
 import {
   bisnisLokalJsonLd,
   canonical,
   situsJsonLd,
   tanyaJawabJsonLd,
+  urlPenuh,
 } from "@/lib/seo";
 import { getServerApi } from "@/server/caller";
 
-export const metadata: Metadata = {
-  // `absolute` melewati template "%s | Offroad Garut" dari layout induk.
-  // Tanpa itu judulnya jadi "Offroad Garut ... | Offroad Garut", dan
-  // pengulangan itu memakan lebar yang seharusnya diisi teks berguna.
-  title: { absolute: "Offroad Garut - Sewa Jeep & Paket Wisata Cikuray" },
-  description:
-    "Sewa Jeep offroad di Garut dengan driver berpengalaman. Jelajahi Cikuray, kebun teh, dan curug. Pesan online, bayar aman, tiket QR langsung ke WhatsApp. Minimal 3 orang.",
-  alternates: canonical("/"),
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const pengaturan = await bacaPengaturanSitus();
+
+  return {
+    // `absolute` melewati template "%s | Offroad Garut" dari layout induk.
+    // Tanpa itu judulnya jadi "Offroad Garut ... | Offroad Garut", dan
+    // pengulangan itu memakan lebar yang seharusnya diisi teks berguna.
+    title: { absolute: pengaturan.metaTitle },
+    description: pengaturan.metaDescription,
+    keywords: pengaturan.keywords,
+    alternates: canonical("/"),
+    openGraph: {
+      type: "website",
+      url: urlPenuh("/"),
+      title: pengaturan.metaTitle,
+      description: pengaturan.metaDescription,
+      images: [{ url: pengaturan.ogImageUrl, alt: pengaturan.metaTitle }],
+    },
+  };
+}
 
 type HasilPaket =
   | { status: "ok"; packages: PackageCard[] }
@@ -54,6 +67,7 @@ async function loadPackages(): Promise<HasilPaket> {
         durationHours: pkg.durationHours,
         pricePerPaxIdr: pkg.pricePerPaxIdr,
         minPax: pkg.minPax,
+        status: pkg.status,
         images: pkg.images.map((image) => ({
           imageUrl: image.imageUrl,
           alt: image.alt,
@@ -76,14 +90,17 @@ async function loadPackages(): Promise<HasilPaket> {
 }
 
 export default async function LandingPage() {
-  const hasil = await loadPackages();
+  const [hasil, pengaturan] = await Promise.all([
+    loadPackages(),
+    bacaPengaturanSitus(),
+  ]);
 
   return (
     <>
       {/* Data terstruktur beranda: usaha, situs, dan tanya jawab. Semuanya
           dibaca dari sumber yang sama dengan teks yang tampil di bawah. */}
-      <JsonLd data={bisnisLokalJsonLd()} />
-      <JsonLd data={situsJsonLd()} />
+      <JsonLd data={bisnisLokalJsonLd(pengaturan)} />
+      <JsonLd data={situsJsonLd(pengaturan)} />
       <JsonLd data={tanyaJawabJsonLd()} />
 
       <Hero />

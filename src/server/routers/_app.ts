@@ -3,6 +3,7 @@ import { adminRouter } from "./admin";
 import { bookingRouter } from "./booking";
 import { galleryRouter } from "./gallery";
 import { pembaruanRouter } from "./pembaruan";
+import { seoRouter } from "./seo";
 import { userRouter } from "./user";
 
 export const appRouter = router({
@@ -11,6 +12,7 @@ export const appRouter = router({
   user: userRouter,
   gallery: galleryRouter,
   pembaruan: pembaruanRouter,
+  seo: seoRouter,
 });
 
 export type AppRouter = typeof appRouter;

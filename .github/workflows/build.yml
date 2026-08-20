@@ -92,6 +92,11 @@ jobs:
         run: |
           rm -rf /tmp/keluaran && mkdir -p /tmp/keluaran
           cp -r .next /tmp/keluaran/.next
+          # Cache incremental webpack, bukan hasil build. Isinya bisa ratusan
+          # MB (pernah 150 MB) dan melewati batas keras GitHub 100 MB per
+          # berkas, jadi push-nya ditolak pre-receive hook. Server membangunnya
+          # ulang sendiri saat berjalan, jadi mengirimnya tidak ada gunanya.
+          rm -rf /tmp/keluaran/.next/cache
           # SHA sumber dicatat supaya server bisa menolak build yang tidak
           # sepasang dengan kode yang sedang ia checkout.
           cat > /tmp/keluaran/BUILD-INFO.json <<JSON
@@ -102,6 +107,18 @@ jobs:
             "nomorJob": "${{ github.run_number }}"
           }
           JSON
+
+      - name: Pastikan tidak ada berkas raksasa
+        # Gagal di sini jauh lebih berguna daripada ditolak pre-receive hook,
+        # yang pesannya tidak menyebut kenapa berkas itu sampai ikut terbawa.
+        run: |
+          BESAR=$(find /tmp/keluaran -type f -size +90M)
+          if [ -n "$BESAR" ]; then
+            echo "Berkas berikut melewati 90 MB dan akan ditolak GitHub:"
+            echo "$BESAR" | xargs -r du -h
+            exit 1
+          fi
+          echo "Ukuran terbesar: $(find /tmp/keluaran -type f -printf '%s %p\n' | sort -rn | head -1 | awk '{printf "%.1f MB  %s", $1/1048576, $2}')"
 
       - name: Dorong ke branch hasil build
         env:

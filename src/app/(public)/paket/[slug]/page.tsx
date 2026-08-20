@@ -1,4 +1,4 @@
-import { Check, Clock, MapPin, Users } from "lucide-react";
+import { Check, Clock, MapPin, PauseCircle, Users } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,7 +12,11 @@ import { JsonLd } from "@/components/shared/json-ld";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { SLUG_PAKET_DUMMY } from "@/lib/constants";
+import {
+  PAKET_DIJEDA_JUDUL,
+  PAKET_DIJEDA_KETERANGAN,
+  SLUG_PAKET_DUMMY,
+} from "@/lib/constants";
 import { catatKegagalanDatabase } from "@/lib/db/errors";
 import {
   canonical,
@@ -101,6 +105,13 @@ export default async function PackageDetailPage({ params }: PageProps) {
 
   if (!pkg) notFound();
 
+  // Paket dijeda halamannya sengaja tetap hidup dan tetap terindeks. Yang
+  // berubah cuma tombolnya, plus penanda OutOfStock di data terstruktur.
+  const dijeda = pkg.status === "dijeda";
+  const tautanWhatsApp = `https://wa.me/${site.whatsapp.replace("+", "")}?text=${encodeURIComponent(
+    `Halo, saya mau tanya jadwal paket ${pkg.name}.`,
+  )}`;
+
   return (
     <>
       {/* Harga di Product dibaca dari paket yang sama dengan yang dirender
@@ -142,6 +153,13 @@ export default async function PackageDetailPage({ params }: PageProps) {
             />
 
             <div>
+              {dijeda ? (
+                <Badge tone="warning" className="mb-3">
+                  <PauseCircle className="size-3.5" aria-hidden="true" />
+                  {PAKET_DIJEDA_JUDUL}
+                </Badge>
+              ) : null}
+
               <h1 className="text-section sm:text-[2rem]">{pkg.name}</h1>
               <div className="mt-3 flex flex-wrap gap-2">
                 <Badge tone="forest">
@@ -231,14 +249,36 @@ export default async function PackageDetailPage({ params }: PageProps) {
                 . Tidak ada biaya administrasi tambahan.
               </p>
 
-              <Button size="lg" asChild className="mt-5 w-full">
-                <Link href={`/booking?paket=${pkg.slug}`}>Pesan paket ini</Link>
-              </Button>
+              {dijeda ? (
+                <>
+                  <Button size="lg" asChild className="mt-5 w-full">
+                    <a
+                      href={tautanWhatsApp}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Tanya jadwal lewat WhatsApp
+                    </a>
+                  </Button>
 
-              <p className="mt-3 text-legal text-muted-foreground">
-                Kamu akan diminta masuk dengan Google sebelum mengisi data
-                pemesanan.
-              </p>
+                  <p className="mt-3 text-legal text-muted-foreground">
+                    {PAKET_DIJEDA_KETERANGAN}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Button size="lg" asChild className="mt-5 w-full">
+                    <Link href={`/booking?paket=${pkg.slug}`}>
+                      Pesan paket ini
+                    </Link>
+                  </Button>
+
+                  <p className="mt-3 text-legal text-muted-foreground">
+                    Kamu akan diminta masuk dengan Google sebelum mengisi data
+                    pemesanan.
+                  </p>
+                </>
+              )}
             </Card>
           </aside>
         </div>

@@ -152,3 +152,36 @@ untuk usaha wisata daerah hasil pencarian lokal Google adalah sumber pelanggan
 utama. Semuanya sudah ada di kode sebagai teks biasa dan tidak satu pun terbaca
 mesin pencari sebagai data. Aturan lengkapnya kini ada di bagian 7 standar
 pengembangan global.
+
+## 14. Kolom `packages.status` menggantikan `is_active`
+
+PRD merancang paket dengan penanda aktif berupa boolean. Kolom itu diganti enum
+tiga nilai: `aktif`, `dijeda`, dan `tersembunyi`.
+
+Alasannya, "tidak dijual" ternyata punya dua arti yang akibatnya jauh berbeda
+bagi mesin pencari. Layanan yang dijeda dua minggu dan layanan yang dihentikan
+selamanya tidak boleh diperlakukan sama: yang pertama halamannya harus tetap
+hidup dan tetap terindeks dengan penanda `OutOfStock`, sedangkan yang kedua
+memang pantas membalas 404. Dengan boolean, keduanya terpaksa jadi 404, dan
+setiap jeda sementara membuang peringkat pencarian yang dikumpulkan
+berbulan-bulan.
+
+Add-on dan titik kumpul sengaja tetap memakai boolean `is_active`. Keduanya
+tidak punya halaman publik sendiri, jadi perbedaan itu tidak ada artinya di
+sana: sebuah layanan tambahan itu ditawarkan atau tidak.
+
+## 15. Tabel `site_settings` untuk metadata dan info usaha
+
+PRD tidak menyebut penyimpanan pengaturan situs. Tabel satu baris ditambahkan
+supaya pemilik bisa mengubah judul, deskripsi, gambar pratinjau, alamat, jam
+buka, dan tautan profil resmi sendiri lewat halaman `/seo`.
+
+Sebelumnya semua nilai itu ada di `src/lib/site.ts`, sehingga memperbaiki satu
+huruf di alamat memerlukan developer dan satu siklus deploy penuh. Padahal
+justru nilai-nilai inilah yang memberi makan data terstruktur LocalBusiness,
+yaitu bagian yang paling menentukan apakah usaha ini muncul di pencarian lokal.
+
+`src/lib/site.ts` tetap ada dan berubah peran jadi nilai bawaan. Pembacaannya
+jatuh ke sana kalau barisnya belum dibuat atau database sedang tidak bisa
+dihubungi, karena `generateMetadata` berjalan di setiap halaman publik dan yang
+melempar error di sana akan menjatuhkan seluruh halaman, bukan cuma tag-nya.

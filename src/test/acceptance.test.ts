@@ -191,7 +191,9 @@ describe("§15.4 smoke test", () => {
   it("pengunjung anonim mendapat minimal satu paket aktif", async () => {
     const hasil = await anonymous.booking.getPackages({ limit: 10 });
     expect(hasil.length).toBeGreaterThanOrEqual(1);
-    expect(hasil.every((pkg) => pkg.isActive)).toBe(true);
+    // Paket dijeda halamannya sengaja tetap hidup, jadi yang dijamin di
+    // sini adalah tidak ada yang tersembunyi, bukan semuanya aktif.
+    expect(hasil.every((pkg) => pkg.status !== "tersembunyi")).toBe(true);
   });
 
   it("AC-BOOKING-1: pax 2 ditolak dengan pesan minimal 3 pax", async () => {

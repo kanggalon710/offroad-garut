@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import robots from "@/app/robots";
 import { faqs } from "@/lib/faq";
+import { pengaturanBawaan } from "@/lib/pengaturan-situs";
 import {
   bisnisLokalJsonLd,
   canonical,
@@ -32,9 +33,10 @@ describe("URL absolut", () => {
 
 describe("data terstruktur", () => {
   it("setiap blok membawa @context dan @type", () => {
+    const pengaturan = pengaturanBawaan();
     const semua = [
-      bisnisLokalJsonLd(),
-      situsJsonLd(),
+      bisnisLokalJsonLd(pengaturan),
+      situsJsonLd(pengaturan),
       tanyaJawabJsonLd(),
       remahRotiJsonLd([{ name: "Beranda", path: "/" }]),
     ];
@@ -45,12 +47,39 @@ describe("data terstruktur", () => {
   });
 
   it("bisnis lokal memuat alamat, koordinat, dan jam buka", () => {
-    const bisnis = bisnisLokalJsonLd();
+    const bisnis = bisnisLokalJsonLd(pengaturanBawaan());
     expect(bisnis.address.streetAddress).toBe(site.basecamp.address);
     expect(bisnis.geo.latitude).toBe(site.basecamp.lat);
     expect(bisnis.geo.longitude).toBe(site.basecamp.lng);
     expect(bisnis.openingHoursSpecification).toHaveLength(1);
     expect(bisnis.telephone).toBe(site.whatsapp);
+  });
+
+  it("bisnis lokal memakai nilai dari pengaturan, bukan konstanta kode", () => {
+    // Kalau pembangunnya diam-diam kembali membaca site.ts, mengubah alamat
+    // lewat halaman Kelola SEO tidak akan berpengaruh apa-apa dan tidak ada
+    // yang tahu sampai ada yang mengeceknya di Google.
+    const bisnis = bisnisLokalJsonLd({
+      ...pengaturanBawaan(),
+      businessName: "Nama Uji",
+      address: "Jalan Uji No. 1",
+      phone: "+628000000000",
+      sameAs: ["https://instagram.com/uji"],
+    });
+    expect(bisnis.name).toBe("Nama Uji");
+    expect(bisnis.address.streetAddress).toBe("Jalan Uji No. 1");
+    expect(bisnis.telephone).toBe("+628000000000");
+    expect(bisnis.sameAs).toEqual(["https://instagram.com/uji"]);
+  });
+
+  it("jam buka mengikuti pengaturan", () => {
+    const bisnis = bisnisLokalJsonLd({
+      ...pengaturanBawaan(),
+      opensAt: "05:30",
+      closesAt: "18:00",
+    });
+    expect(bisnis.openingHoursSpecification[0]?.opens).toBe("05:30");
+    expect(bisnis.openingHoursSpecification[0]?.closes).toBe("18:00");
   });
 
   it("tanya jawab memuat semua pertanyaan yang tampil di halaman", () => {
@@ -70,6 +99,7 @@ describe("data terstruktur", () => {
       description: "Berangkat subuh mengejar matahari terbit.",
       pricePerPaxIdr: 250_000,
       durationHours: 4,
+      status: "aktif" as const,
       images: [{ imageUrl: "/images/paket-sunrise-cikuray.jpg" }],
     };
     const jsonLd = paketJsonLd(pkg);
@@ -111,6 +141,40 @@ describe("robots.txt", () => {
 
     for (const rute of [...RUTE_PELANGGAN, ...RUTE_PENGELOLA]) {
       expect(semuaDilarang).toContain(`${rute}/`);
+    }
+  });
+
+  it("setiap halaman di grup (admin) sudah terdaftar sebagai rute privat", async () => {
+    // Penjaga yang sebenarnya. Tes sebelumnya cuma memeriksa rute yang SUDAH
+    // ada di daftar; tes ini membaca folder rute yang benar-benar ada di
+    // aplikasi, jadi halaman pengelola baru yang lupa didaftarkan akan
+    // menggagalkan build alih-alih diam-diam bocor ke hasil pencarian.
+    const { readdirSync } = await import("node:fs");
+    const { RUTE_PENGELOLA } = await import("@/lib/rute-privat");
+
+    const halaman = readdirSync("src/app/(admin)", { withFileTypes: true })
+      .filter((entri) => entri.isDirectory())
+      .map((entri) => `/${entri.name}`)
+      // Rute dinamis seperti /packages/[id] dijaga lewat induknya.
+      .filter((rute) => !rute.includes("["));
+
+    expect(halaman.length).toBeGreaterThan(0);
+    for (const rute of halaman) {
+      expect(RUTE_PENGELOLA as readonly string[]).toContain(rute);
+    }
+  });
+
+  it("matcher middleware mencakup setiap rute privat yang butuh login", async () => {
+    // Daftar ketiga yang bisa ikut basi. Rute yang ada di RUTE_PENGELOLA tapi
+    // tidak di matcher tidak akan pernah dilewati middleware, jadi gerbang
+    // cookie-nya tidak berlaku dan halamannya cuma dijaga layout server.
+    const { config } = await import("@/middleware");
+    const { RUTE_PELANGGAN, RUTE_PENGELOLA } = await import(
+      "@/lib/rute-privat"
+    );
+
+    for (const rute of [...RUTE_PELANGGAN, ...RUTE_PENGELOLA]) {
+      expect(config.matcher).toContain(`${rute}/:path*`);
     }
   });
 

@@ -46,5 +46,6 @@ export const config = {
     "/gallery/:path*",
     "/packages/:path*",
     "/pembaruan/:path*",
+    "/seo/:path*",
   ],
 };

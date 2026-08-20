@@ -193,7 +193,19 @@ export const packages = mysqlTable(
     pricePerPaxIdr: int("price_per_pax_idr").notNull(),
     minPax: int("min_pax").notNull().default(3),
     maxPax: int("max_pax").notNull().default(100),
-    isActive: boolean("is_active").notNull().default(true),
+    /**
+     * Menggantikan boolean isActive, karena "tidak dijual" punya dua arti
+     * yang akibatnya jauh berbeda bagi mesin pencari:
+     *
+     * - "dijeda": halaman tetap hidup dan tetap terindeks, cuma tidak bisa
+     *   dipesan. Dipakai untuk layanan yang cuma berhenti sementara.
+     * - "tersembunyi": halaman membalas 404 dan hilang dari sitemap. Ini
+     *   memberi tahu mesin pencari bahwa halamannya hilang permanen, jadi
+     *   peringkatnya dibuang dan harus dibangun ulang dari nol.
+     */
+    status: mysqlEnum("status", ["aktif", "dijeda", "tersembunyi"])
+      .notNull()
+      .default("aktif"),
     createdAt: timestamp("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
     deletedAt: timestamp("deleted_at"),
@@ -217,6 +229,38 @@ export const packageGalleries = mysqlTable(
     index("idx_package_galleries_package_id").on(table.packageId),
   ],
 );
+
+/* ====================== site_settings ===================== */
+
+/**
+ * Satu baris berisi identitas situs dan info usaha. Memberi makan metadata
+ * setiap halaman publik dan data terstruktur LocalBusiness.
+ *
+ * `src/lib/site.ts` tetap ada sebagai nilai bawaan: kalau barisnya belum
+ * dibuat atau database sedang tidak bisa dihubungi, metadata jatuh ke sana.
+ * generateMetadata berjalan di setiap halaman, dan yang melempar error di
+ * sana akan menjatuhkan seluruh halaman, bukan cuma tag-nya.
+ */
+export const siteSettings = mysqlTable("site_settings", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  metaTitle: varchar("meta_title", { length: 255 }).notNull(),
+  metaDescription: varchar("meta_description", { length: 500 }).notNull(),
+  keywords: varchar("keywords", { length: 500 }),
+  ogImageUrl: varchar("og_image_url", { length: 1024 }),
+  businessName: varchar("business_name", { length: 255 }).notNull(),
+  address: varchar("address", { length: 500 }).notNull(),
+  locality: varchar("locality", { length: 120 }).notNull(),
+  region: varchar("region", { length: 120 }).notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 7 }).notNull(),
+  longitude: decimal("longitude", { precision: 10, scale: 7 }).notNull(),
+  phone: varchar("phone", { length: 30 }).notNull(),
+  priceRange: varchar("price_range", { length: 60 }).notNull(),
+  opensAt: varchar("opens_at", { length: 5 }).notNull(),
+  closesAt: varchar("closes_at", { length: 5 }).notNull(),
+  sameAs: json("same_as").$type<string[]>(),
+  updatedAt: timestamp("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedBy: varchar("updated_by", { length: 36 }),
+});
 
 /* ========================= jeeps ========================= */
 
@@ -500,6 +544,8 @@ export type MeetingPoint = typeof meetingPoints.$inferSelect;
 export type Jeep = typeof jeeps.$inferSelect;
 export type Booking = typeof bookings.$inferSelect;
 export type Payment = typeof payments.$inferSelect;
+export type SiteSettings = typeof siteSettings.$inferSelect;
+export type PackageStatus = Package["status"];
 export type AddOnService = typeof addOnServices.$inferSelect;
 export type BookingAddOn = typeof bookingAddOns.$inferSelect;
 export type AddOnPricingUnit = AddOnService["pricingUnit"];
