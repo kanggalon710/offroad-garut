@@ -1,3 +1,27 @@
+## 2026-08-23 - Rilis 893b71a ke produksi dan staging
+**Agen:** claude-opus-5 (Claude Code) | **Status:** selesai
+**Kenapa:** Perbaikan ekstensi unggahan tidak ada gunanya selama masih tertahan di working
+tree. Pemilik minta commit dan push ke dev maupun main, lalu menyetujui pemasangannya.
+**Perubahan:** Commit dibuat di `dev` sesuai konvensi repo, lalu `main` di-fast-forward ke
+commit yang sama, jadi kedua branch menunjuk `893b71a` tanpa commit merge. GitHub Actions
+membangun keduanya (job 13 untuk dev, job 14 untuk main). Kedua server menarik kodenya lalu
+memasang hasil build yang sepadan, dengan `BUILD-INFO.json.sumberSha` dicocokkan ke `HEAD`
+lebih dulu. Sisa berkas kerja dari sesi audit (`.htaccess.sebelum-ir20260823`, berkas uji
+ACME) dipindah atau dihapus supaya working tree kedua server benar-benar bersih.
+**File:** (tidak ada perubahan kode baru; hanya pemasangan) .ai/STATE.md, .ai/TODO.md
+**Diverifikasi:**
+- Kedua server: `HEAD=893b71a`, working tree 0 perubahan. Ini sekaligus membuktikan baris
+  `.gitignore` bekerja, sebab sebelum commit ini `.htaccess` selalu terhitung untracked.
+- Produksi: `/`, `/api/health`, `/masuk`, `/paket/trek-kebun-teh-cikajang`, `/robots.txt`,
+  `/sitemap.xml`, dan aset `_next` semuanya 200; `/dashboard` 307 ke login.
+- Staging: `/`, `/api/health`, `/masuk` semuanya 200.
+- Kebocoran tetap tertutup sesudah rilis: `README.md`, `AGENTS.md`, `DEPLOY-VPS.md`,
+  `.cpanel.yml`, `.env.production`, `package.json` semuanya 404 di produksi.
+- Konten dari database masih terbaca di beranda produksi (dua tautan paket muncul).
+**Catatan:** Pemasangan dilakukan lewat terminal, bukan tombol /pembaruan, karena penjaga
+working-tree-kotor di `perbarui.cjs` berjalan SEBELUM tarik kode, sehingga commit yang
+memperbaiki masalah itu sendiri belum bisa memakainya. Rilis berikutnya sudah bisa lewat
+tombol. `.next-sebelumnya` di kedua server berisi build `8bf8abe` untuk pemulihan.
 ## 2026-08-23 - Audit keamanan: docroot dikeraskan, ekstensi unggahan diperbaiki
 **Agen:** claude-opus-5 (Claude Code) | **Status:** selesai (perbaikan kode belum tayang)
 **Kenapa:** Pemilik minta dipastikan project ini tidak meninggalkan pintu terbuka, sesudah

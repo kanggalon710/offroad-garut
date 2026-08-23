@@ -15,10 +15,9 @@ pemilik project.
       hari ini, masih terbuka. Pintu terbuka terbesar yang tersisa, dan berlaku untuk
       seluruh server, bukan cuma project ini. Butuh root atau pihak hoster (Hideki).
 
-- [~] 2026-08-23 **Perbaikan ekstensi unggahan belum tayang.** `src/lib/upload.ts`
-      sudah diperbaiki dan lolos uji di working tree lokal, tapi produksi dan staging
-      masih menjalankan `8bf8abe` yang memuat cacatnya. Perlu commit, push, tunggu CI,
-      lalu pasang build-nya.
+- [x] 2026-08-23 **Perbaikan ekstensi unggahan tayang di kedua lingkungan.**
+      Dirilis sebagai `893b71a`, dipasang lewat terminal karena tombol /pembaruan
+      masih terhalang working tree kotor SEBELUM commit itu sendiri masuk.
 
 - [ ] 2026-08-23 **Pendaftaran mandiri email + kata sandi terbuka.** `emailAndPassword`
       aktif tanpa `disableSignUp`, jadi siapa pun bisa membuat akun. Perannya selalu
@@ -34,16 +33,14 @@ pemilik project.
 
 - [ ] 2026-08-23 **`public/uploads` masih 775 (bisa ditulis grup).** Turunkan ke 755.
 
-- [!] 2026-08-23 **Tombol /pembaruan tidak bisa dipakai di kedua server.**
-      `perbarui.cjs` menolak jalan kalau working tree kotor, dan `.htaccess` di kedua
-      repo adalah berkas untracked yang wajib ada (memuat konfigurasi Passenger).
-      Selama belum masuk `.gitignore`, satu-satunya jalur pembaruan adalah terminal.
-      Perbaikannya satu baris, tapi butuh commit, push, dan menunggu build CI.
+- [x] 2026-08-23 **Tombol /pembaruan bisa dipakai lagi.** `.htaccess` masuk
+      `.gitignore` pada `893b71a`, dan kedua server kini melaporkan working tree
+      bersih (0 perubahan), jadi `perbarui.cjs` tidak lagi membatalkan diri.
 
-- [ ] 2026-08-23 **`.htaccess` tidak memblokir `*.tar.gz` di docroot.** Tiga arsip build
-      sempat bisa diunduh publik. Arsipnya sudah dipindah, tapi aturannya belum ada, jadi
-      arsip berikutnya yang tergeletak akan terbuka lagi. Tambahkan `\.(tar|gz|zip|sql|bak|log)$`
-      ke `FilesMatch` di kedua repo, seperti yang sudah dilakukan di mpwa.
+- [x] 2026-08-23 **`.htaccess` kedua repo dikeraskan.** Aturannya diganti dari
+      daftar-tolak berbasis nama jadi berbasis bentuk: semua berkas titik (`^\.`)
+      plus daftar ekstensi berkas kerja. Arsip, dokumen, dan konfigurasi ikut
+      tertutup tanpa perlu ditambal satu per satu.
 
 - [ ] 2026-08-23 **Migrasi berjalan dari checkout sumber, bukan dari bundle yang terpasang.**
       `server.js` memanggil `terapkanMigrasi()` di setiap boot. Menarik kode tanpa memasang

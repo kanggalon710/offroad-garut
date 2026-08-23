@@ -19,8 +19,12 @@ Deploy TIDAK PERNAH membangun di server. GitHub Actions membangun lalu menulis
 hasilnya ke branch `build-main` / `build-dev`; server hanya memasangnya.
 
 ## Berjalan
-- Produksi dan staging dua-duanya di commit `8bf8abe`, kode maupun hasil build.
-  Diverifikasi 2026-08-23: keduanya membalas 200 dan menyajikan meta description baru.
+- Produksi dan staging dua-duanya di commit `893b71a`, kode maupun hasil build, dengan
+  working tree BERSIH (0 perubahan). Diverifikasi 2026-08-23.
+- Tombol /pembaruan sudah bisa dipakai lagi: `.htaccess` kini masuk `.gitignore`, jadi
+  working tree tidak lagi terhitung kotor dan `perbarui.cjs` tidak menolak jalan.
+- Berkas internal tertutup dari Apache di kedua domain. Aturan `.htaccess` berbasis
+  BENTUK (semua berkas titik plus daftar ekstensi berkas kerja), bukan daftar nama.
 - Skema database kedua lingkungan lengkap sampai migrasi `0009` (`status`,
   `site_settings`, `jeep_galleries`, `jeep_maintenances`).
 - Kredensial database per-domain: kedua `.env.production` memakai
@@ -30,20 +34,18 @@ hasilnya ke branch `build-main` / `build-dev`; server hanya memasangnya.
   di dalam transaksi yang lalu di-ROLLBACK: 1 baris masuk, 0 baris tersisa).
 
 ## Sedang dikerjakan
-Perbaikan keamanan unggahan sudah ditulis dan lolos uji, TAPI BELUM TAYANG. Ia ada di
-working tree lokal (belum commit), sedangkan produksi dan staging masih menjalankan
-`8bf8abe`. Langkah berikutnya: commit, push, tunggu CI, lalu pasang hasil build-nya.
+Tidak ada. Perbaikan keamanan unggahan (`893b71a`) sudah tayang di kedua lingkungan
+dan terverifikasi.
 
 ## Terhambat, butuh manusia
 - **Port MySQL 3306 masih terbuka ke seluruh internet.** Diverifikasi lagi
   2026-08-23. Ini pintu terbuka terbesar yang tersisa dan berlaku untuk seluruh
   server, bukan cuma project ini. Butuh root atau bantuan pihak hoster (Hideki)
   untuk memasang aturan firewall.
-- **Tombol /pembaruan masih menolak jalan di kedua server.** `perbarui.cjs`
-  membatalkan diri kalau working tree kotor, dan `.htaccess` di kedua repo adalah
-  berkas untracked yang WAJIB ada (dia yang memuat konfigurasi Passenger). Baris
-  `.htaccess` sudah ditambahkan ke `.gitignore` di working tree lokal, tapi baru
-  berlaku di server sesudah commit, push, dan pemasangan build berikutnya.
+- **Pendaftaran mandiri email + kata sandi masih terbuka.** Perannya selalu
+  `customer`, jadi ini bukan eskalasi hak akses, hanya permukaan yang tidak perlu.
+  Perlu keputusan pemilik: turis memakai Google, dan email plus kata sandi cuma
+  dipakai pengelola, jadi pendaftarannya kemungkinan besar boleh dimatikan.
 
 ## Jebakan
 1. **Migrasi terikat ke checkout git, aplikasi terikat ke branch build.**
