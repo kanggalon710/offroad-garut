@@ -1,3 +1,111 @@
+## 2026-08-23 - Audit keamanan: docroot dikeraskan, ekstensi unggahan diperbaiki
+**Agen:** claude-opus-5 (Claude Code) | **Status:** selesai (perbaikan kode belum tayang)
+**Kenapa:** Pemilik minta dipastikan project ini tidak meninggalkan pintu terbuka, sesudah
+pemulihan deploy hari yang sama menemukan tiga arsip build bisa diunduh publik.
+**Temuan dan perubahan:**
+- **`.htaccess` memakai daftar-tolak berbasis nama, dan daftar itu bocor.** Selain arsip
+  build, yang tersaji publik ternyata: `AGENTS.md`, `README.md`, `DEPLOY-VPS.md`,
+  `DEVIASI-PRD.md`, `CLAUDE.md`/`GEMINI.md`/`QWEN.md`, `.cpanel.yml`, `.cpanel/deploy.sh`,
+  `.github/workflows/build.yml`, dan seluruh `docs/`. `DEPLOY-VPS.md` menyebut IP server
+  lain (`160.236.19.22`) dan `demo1.jabnet.id`. Tidak ada kredensial di dalamnya, tapi
+  nilainya untuk pengintaian nyata.
+  Aturannya diganti jadi berbasis BENTUK: semua berkas titik (`^\.`) plus daftar ekstensi
+  berkas kerja. Berkas baru ikut tertutup tanpa perlu menambal lagi.
+- **`<FilesMatch ".">` (tolak-semua) DICOBA LEBIH DULU DAN MERUSAK SITUS.** Apache
+  menerapkan FilesMatch pada nama hasil pemetaan URL walaupun berkasnya tidak ada di
+  disk, jadi `/masuk` dan `/api/health` ikut ditolak sebelum Passenger sempat menangani.
+  Ketahuan karena diuji di staging dulu, dipulihkan dalam hitungan menit, lalu diganti
+  pendekatan berbasis ekstensi. Dicatat di komentar `.htaccess` supaya tidak diulang.
+- **`src/lib/upload.ts` mengambil ekstensi dari nama berkas kiriman klien.** Pengelola bisa
+  menyimpan `muatan.svg` hanya dengan menamainya begitu sambil mengaku PDF.
+  `GET /uploads/[...path]` memang menolak ekstensi di luar daftar izin, tapi penyaji statis
+  bawaan Next mendata isi `public/` saat aplikasi start dan melayaninya lebih dulu tanpa
+  penyaringan itu, jadi sesudah satu restart berkas tadi tersaji sebagai `image/svg+xml`
+  di origin aplikasi. Ekstensi kini diturunkan dari MIME yang sudah divalidasi lewat
+  `ekstensiDariTipeKonten()` baru, dan MIME di luar daftar ditolak alih-alih ditebak `.bin`.
+- `.env.production` di kedua repo diubah dari 644 ke 600.
+- `.htaccess` ditambahkan ke `.gitignore` supaya working tree tidak selamanya kotor dan
+  tombol /pembaruan bisa dipakai lagi.
+**Yang diperiksa dan ternyata SUDAH benar (tidak diubah):**
+- Setiap mutasi tRPC bergerbang peran; seluruh `publicProcedure` hanya query baca.
+- `getBookingByCode` dan `syncBookingStatus` memeriksa KEPEMILIKAN (`bookings.userId`),
+  bukan cuma peran. Tidak ada IDOR.
+- Webhook Midtrans memverifikasi tanda tangan SHA512 sebelum menyentuh database, dan
+  memakai `.for("update")` di dalam transaksi sehingga notifikasi ganda tidak balapan.
+- `/pembaruan` bergerbang `superAdminProcedure` + sakelar `UPDATE_ENABLED` + PIN diminta
+  ulang + penguncian sesudah percobaan gagal + audit ditulis SEBELUM eksekusi. Tidak ada
+  data request yang masuk ke shell; branch dibaca dari env, bukan dari permintaan.
+- `role: { input: false }` di Better-auth, jadi pendaftaran mandiri tidak bisa mengangkat
+  diri jadi admin.
+- Rate limit login dibuktikan empiris di staging: percobaan ke-4 sudah 429.
+- `GET /uploads/[...path]` menutup path traversal di dua lapis plus cek NUL, dan
+  menyajikan Content-Type dari daftar izin, bukan tebakan.
+- Rahasia R2/Midtrans/Fonnte semuanya server-only; yang berawalan `NEXT_PUBLIC_` cuma
+  URL publik dan client key Midtrans yang memang dimaksudkan publik.
+**File:** src/lib/media-types.ts, src/lib/upload.ts, src/test/ekstensi-unggahan.test.ts,
+.gitignore, .ai/STATE.md, .ai/PROGRESS.md, .ai/TODO.md
+**Diverifikasi:**
+- `typecheck` bersih, `lint` bersih, `test` 156 lolos di 17 berkas (sebelumnya 150 di 16).
+- Penjaga tes dibuktikan benar-benar gagal: cacat lama disisipkan ulang, 2 tes gagal,
+  lalu dipulihkan dan 6 tes lolos lagi.
+- Sesudah pengerasan, di KEDUA domain: `/`, `/api/health`, `/masuk`, `/paket/<slug>`,
+  `/robots.txt`, `/sitemap.xml`, aset `_next` semuanya 200; tantangan ACME 200; sedangkan
+  `README.md`, `AGENTS.md`, `DEPLOY-VPS.md`, `DEVIASI-PRD.md`, `.cpanel.yml`,
+  `.cpanel/deploy.sh`, `.github/workflows/build.yml`, `.env.production`, `package.json`,
+  `server.js`, `.gitignore`, `next.config.ts`, dan `docs/**` semuanya 404.
+**Catatan:** Perbaikan `upload.ts` BELUM TAYANG. Produksi dan staging masih menjalankan
+`8bf8abe`; yang sudah tayang hanya pengerasan `.htaccess` dan izin berkas, karena keduanya
+tidak butuh build. Sisa temuan yang belum ditutup ada di `TODO.md`.
+## 2026-08-23 - Pemulihan deploy: produksi dan staging kembali sepasang dengan 8bf8abe
+**Agen:** claude-opus-5 (Claude Code) | **Status:** selesai
+**Kenapa:** Pemilik melapor dua kerusakan. Di produksi, membuat Paket Tour baru gagal dengan
+`Failed query: insert into packages (... is_active ...)`. Di staging, seluruh situs membalas
+"We're sorry, but something went wrong". Pemilik curiga kredensial database, karena baru saja
+dirotasi ke pengguna per-domain. Ternyata bukan kredensial: keduanya terbukti otentik dan
+berprivilese penuh. Dua kerusakan itu penyebabnya berbeda dan dua-duanya soal deploy.
+**Penyebab akar:**
+- Produksi: checkout sumber sudah di `8bf8abe`, tapi `.next` masih hasil build 2026-08-19
+  (BUILD_ID `SuN9ECWxpLjmy6mOrm07q`), lebih tua dari `729e22b`. `server.js` menjalankan
+  migrasi di setiap boot Passenger dari checkout sumber, jadi `0006` sudah menjatuhkan
+  `packages.is_active` sementara bundle lama masih menulis ke kolom itu. Skema database
+  justru sudah lengkap sampai `0009`; yang tertinggal hanya bundle-nya.
+- Staging: `node_modules` kosong (0 entri, 16K), sehingga Passenger gagal dengan
+  `Cannot find package 'next'`. Sebabnya `package.json` disunting tangan di server untuk
+  menambah `@esbuild/linux-x64`, membuatnya tidak sinkron dengan `package-lock.json`.
+  `npm ci` menghapus `node_modules` lebih dulu lalu menolak memasang, jadi direktori itu
+  ditinggal kosong. Karena aplikasi tidak pernah boot lagi, migrasi berhenti di `0005`:
+  database staging masih punya `is_active` dan belum punya `site_settings`.
+**Perubahan (semua di server, tidak ada berkas repo yang diubah):**
+- Staging: `package.json` dikembalikan ke versi commit, `node_modules` dipulihkan dari
+  `node_modules-bak` yang untungnya masih utuh (177 entri, 641 MB, `next` ada), lalu hasil
+  build `build-dev` dipasang. Boot berikutnya menerapkan migrasi `0006` sampai `0009`.
+- Produksi: hasil build `build-main` dipasang, `.next` lama disimpan di `.next-sebelumnya`.
+- Kedua pemasangan memverifikasi `BUILD-INFO.json.sumberSha` sama dengan `HEAD` sebelum
+  menukar apa pun, meniru penjaga yang sudah ada di `scripts/perbarui.cjs`.
+- Keamanan: tiga arsip build yang tergeletak di docroot ternyata bisa diunduh publik
+  (HTTP 200): `next-produksi-94f53a4.tar.gz`, `next-produksi-9e4cd65.tar.gz`, dan
+  `next-dev-d76cce3.tar.gz`. `FilesMatch` di `.htaccess` memang tidak memblokir `*.tar.gz`.
+  Isinya dipindai lebih dulu: hanya NAMA variabel (`MIDTRANS_SERVER_KEY`, `FONNTE_TOKEN`,
+  `BETTER_AUTH_SECRET`) yang muncul, bukan nilainya, jadi ini kebocoran kode sumber
+  terkompilasi, bukan kebocoran kredensial. Ketiganya dipindah ke `~/build-artifacts-lama/`,
+  bersama `cek-db.cjs` dan `migrasi.cjs` yang juga tergeletak di docroot produksi.
+**File:** .ai/STATE.md (baru), .ai/PROGRESS.md, .ai/TODO.md
+**Diverifikasi:**
+- `garutoffroad.com` 200, `dev.garutoffroad.com` 200 (sebelumnya 500).
+- Keduanya menyajikan meta description baru "Sewa Jeep offroad di Garut bersama driver
+  lokal berpengalaman...", bukan teks lama. Ini bukti build baru benar-benar tayang.
+- Kolom `packages` di kedua database kini identik dan memuat `status`, tanpa `is_active`.
+  Staging bertambah `site_settings`, `jeep_galleries`, `jeep_maintenances`.
+- Kredensial diuji langsung: `CURRENT_USER()` membalas `jabnet_offroadgrt@localhost` di
+  kedua database, dengan 4 paket dan 3 pesanan terbaca di produksi.
+- INSERT paket persis bentuk yang dipakai kode baru dijalankan di dalam transaksi lalu
+  di-ROLLBACK: `ROW_COUNT()` 1, sisa baris uji 0, total paket tetap 4.
+- `/laporan`, `/seo`, `/master`, `/pembaruan`, `/dashboard` membalas 307 ke login (rutenya
+  ada), `sitemap.xml` dan `robots.txt` 200.
+- Keempat URL arsip yang tadinya 200 kini 404.
+**Catatan:** Tidak diverifikasi di peramban pada 360/768/1280px. Tidak ada perubahan UI di
+sesi ini, yang berubah hanya bundle mana yang terpasang, dan bundle itu sendiri sudah
+diverifikasi visualnya saat dibangun pada 2026-08-20.
 ## 2026-08-20 - Perbaikan PIN dan unggah, foto armada, dan halaman Laporan
 **Agen:** claude | **Status:** selesai
 **Kenapa:** Dua cacat yang memblokir pemakaian, dan satu permintaan fitur. Pemilik melaporkan "PIN lama tidak cocok" saat mencoba mengganti PIN di /pembaruan, dan itu ternyata kebuntuan total: `scripts/set-super-admin.cjs` menyetel `update_pin_hash` DAN `must_change_credentials` sekaligus, server mewajibkan `pinLama` setiap kali hash sudah terisi, tapi `FormPin` tidak punya kolom untuk itu dan tidak pernah mengirimkannya. Layar wajib-ganti-PIN yang pertama mustahil dilewati siapa pun, sehingga tombol pembaruan tidak pernah bisa dipakai dan produksi tertahan di build lama. Cacat kedua ketemu sambil menelusuri: `/api/upload` memeriksa peran dengan perbandingan sendiri, sehingga `super_admin` ditolak mengunggah.

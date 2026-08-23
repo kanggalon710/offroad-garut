@@ -11,6 +11,47 @@ pemilik project.
 
 ## Prioritas tinggi
 
+- [!] 2026-08-23 **Port MySQL 3306 terbuka ke seluruh internet.** Diverifikasi ulang
+      hari ini, masih terbuka. Pintu terbuka terbesar yang tersisa, dan berlaku untuk
+      seluruh server, bukan cuma project ini. Butuh root atau pihak hoster (Hideki).
+
+- [~] 2026-08-23 **Perbaikan ekstensi unggahan belum tayang.** `src/lib/upload.ts`
+      sudah diperbaiki dan lolos uji di working tree lokal, tapi produksi dan staging
+      masih menjalankan `8bf8abe` yang memuat cacatnya. Perlu commit, push, tunggu CI,
+      lalu pasang build-nya.
+
+- [ ] 2026-08-23 **Pendaftaran mandiri email + kata sandi terbuka.** `emailAndPassword`
+      aktif tanpa `disableSignUp`, jadi siapa pun bisa membuat akun. Perannya selalu
+      `customer` karena `role: { input: false }`, jadi ini BUKAN eskalasi hak akses,
+      hanya permukaan yang tidak perlu (spam akun). Turis memakai Google, dan email
+      plus kata sandi cuma dipakai pengelola, jadi pendaftarannya bisa dimatikan.
+
+- [ ] 2026-08-23 **Perbandingan tanda tangan Midtrans tidak constant-time.**
+      `src/lib/midtrans.ts:157` memakai `===` pada digest SHA512. Secara teori ini
+      kanal samping waktu; secara praktik hampir mustahil dieksploitasi lewat jaringan
+      karena penyerang harus memalsukan seluruh digest sekaligus. Ganti ke
+      `crypto.timingSafeEqual` kalau kebetulan menyentuh berkas itu.
+
+- [ ] 2026-08-23 **`public/uploads` masih 775 (bisa ditulis grup).** Turunkan ke 755.
+
+- [!] 2026-08-23 **Tombol /pembaruan tidak bisa dipakai di kedua server.**
+      `perbarui.cjs` menolak jalan kalau working tree kotor, dan `.htaccess` di kedua
+      repo adalah berkas untracked yang wajib ada (memuat konfigurasi Passenger).
+      Selama belum masuk `.gitignore`, satu-satunya jalur pembaruan adalah terminal.
+      Perbaikannya satu baris, tapi butuh commit, push, dan menunggu build CI.
+
+- [ ] 2026-08-23 **`.htaccess` tidak memblokir `*.tar.gz` di docroot.** Tiga arsip build
+      sempat bisa diunduh publik. Arsipnya sudah dipindah, tapi aturannya belum ada, jadi
+      arsip berikutnya yang tergeletak akan terbuka lagi. Tambahkan `\.(tar|gz|zip|sql|bak|log)$`
+      ke `FilesMatch` di kedua repo, seperti yang sudah dilakukan di mpwa.
+
+- [ ] 2026-08-23 **Migrasi berjalan dari checkout sumber, bukan dari bundle yang terpasang.**
+      `server.js` memanggil `terapkanMigrasi()` di setiap boot. Menarik kode tanpa memasang
+      `.next` yang sepasang akan memigrasi database di bawah kaki aplikasi lama, dan itu
+      persis yang merusak produksi pada 2026-08-23. Pertimbangkan menolak boot kalau
+      `BUILD-INFO.json` di `.next` tidak sepadan dengan `HEAD`, supaya salah pasang
+      berhenti keras alih-alih merusak data diam-diam.
+
 - [x] 2026-08-20 **PIN /pembaruan mustahil diganti.** Form tidak punya kolom PIN lama
       sedangkan server mewajibkannya, jadi layar wajib-ganti-PIN pertama buntu total.
 

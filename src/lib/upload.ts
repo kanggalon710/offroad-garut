@@ -2,6 +2,8 @@ import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 
+import { ekstensiDariTipeKonten } from "@/lib/media-types";
+
 /**
  * Utilitas untuk mengunggah file ke file system lokal (`public/uploads/...`)
  * dengan kompresi gambar otomatis menggunakan sharp.
@@ -50,7 +52,15 @@ export async function processAndSaveUpload({
   }
 
   // Non-image (PDF, dokumen, dll.)
-  const ext = path.extname(originalName) || ".bin";
+  //
+  // Ekstensi diambil dari MIME yang sudah divalidasi, BUKAN dari
+  // `path.extname(originalName)`. Nama berkas datang dari klien apa adanya,
+  // jadi versi sebelumnya menyimpan `payload.svg` begitu saja asal MIME-nya
+  // mengaku PDF. Alasan lengkapnya ada di `ekstensiDariTipeKonten`.
+  const ext = ekstensiDariTipeKonten(mimeType);
+  if (!ext) {
+    throw new Error(`Tipe berkas ${mimeType} tidak diizinkan.`);
+  }
   const filename = `${sanitizeName}-${timestamp}-${randomSuffix}${ext}`;
   const filePath = path.join(uploadDir, filename);
 

@@ -33,3 +33,10 @@ tmp/
 # ia membuat working tree terlihat kotor dan pembaruan berikutnya selalu ditolak.
 .next-sebelumnya/
 restart.txt
+
+# Konfigurasi Apache milik server, bukan milik repo. cPanel yang menulisnya dan
+# isinya berbeda per lingkungan (PassengerAppRoot menunjuk direktori yang berbeda
+# di produksi dan staging), jadi tidak boleh ikut ter-commit. Tanpa baris ini
+# berkasnya terhitung untracked, working tree selalu kotor, dan `perbarui.cjs`
+# menolak jalan sehingga tombol /pembaruan mustahil dipakai.
+.htaccess
