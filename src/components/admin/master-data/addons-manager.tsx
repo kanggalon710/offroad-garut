@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
-import { Input, Textarea } from "@/components/ui/input";
+import { CurrencyInput, Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ToggleAktif } from "@/components/admin/status-toggle";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -223,7 +223,7 @@ export function AddOnsManager() {
               <Textarea id="addon-desc" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Penjelasan singkat mengenai layanan tambahan ini" />
             </Field>
             <Field id="addon-price" label="Harga (IDR)" required>
-              <Input id="addon-price" type="number" value={priceIdr} onChange={(e) => setPriceIdr(Number(e.target.value))} min={0} required />
+              <CurrencyInput id="addon-price" value={priceIdr} onValueChange={setPriceIdr} required />
             </Field>
             <Field
               id="addon-unit"

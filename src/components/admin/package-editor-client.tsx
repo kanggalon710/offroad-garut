@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
-import { Input, Textarea } from "@/components/ui/input";
+import { CurrencyInput, Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
@@ -393,11 +393,10 @@ export function PackageEditorClient({ packageId }: { packageId: string }) {
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <Field id="pkg-price" label="Harga / Pax (IDR)" required>
-              <Input
+              <CurrencyInput
                 id="pkg-price"
-                type="number"
                 value={pricePerPaxIdr}
-                onChange={(e) => setPricePerPaxIdr(Number(e.target.value))}
+                onValueChange={setPricePerPaxIdr}
                 required
               />
             </Field>

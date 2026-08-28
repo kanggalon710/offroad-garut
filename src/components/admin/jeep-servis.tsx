@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
-import { Input, Textarea } from "@/components/ui/input";
+import { CurrencyInput, Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useToast } from "@/components/ui/toast";
 import { JENIS_SERVIS_LABEL, JENIS_SERVIS_OPTIONS } from "@/lib/constants";
@@ -208,12 +208,10 @@ export function JeepServis({
             </Field>
 
             <Field id="servis-biaya" label="Biaya (IDR)">
-              <Input
+              <CurrencyInput
                 id="servis-biaya"
-                type="number"
-                min={0}
                 value={biayaIdr}
-                onChange={(e) => setBiayaIdr(Number(e.target.value))}
+                onValueChange={setBiayaIdr}
               />
             </Field>
 

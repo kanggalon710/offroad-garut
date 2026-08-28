@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field } from "@/components/ui/field";
-import { Input, Textarea } from "@/components/ui/input";
+import { CurrencyInput, Input, Textarea } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useToast } from "@/components/ui/toast";
@@ -201,7 +201,7 @@ export function PackagesManager() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field id="pkg-price" label="Harga / Pax (IDR)" required>
-                <Input id="pkg-price" type="number" value={pricePerPaxIdr} onChange={(e) => setPricePerPaxIdr(Number(e.target.value))} required />
+                <CurrencyInput id="pkg-price" value={pricePerPaxIdr} onValueChange={setPricePerPaxIdr} required />
               </Field>
               <Field id="pkg-duration" label="Durasi (Jam)" required>
                 <Input id="pkg-duration" type="number" value={durationHours} onChange={(e) => setDurationHours(Number(e.target.value))} required />
