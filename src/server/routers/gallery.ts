@@ -32,7 +32,7 @@ export const galleryRouter = router({
 
   /** Mengambil foto/item galeri publik untuk landing page bento grid. */
   getPublicGalleryItems: publicProcedure
-    .input(z.object({ limit: z.number().min(1).max(50).default(12) }).optional())
+    .input(z.object({ limit: z.number().min(1).max(50).default(20) }).optional())
     .query(async ({ ctx, input }) => {
       const publicAlbums = await ctx.db
         .select({ id: albums.id })
@@ -56,7 +56,7 @@ export const galleryRouter = router({
           ),
         )
         .orderBy(asc(albumItems.sortOrder))
-        .limit(input?.limit ?? 12);
+        .limit(input?.limit ?? 20);
     }),
 
   /** Mengambil detail album & seluruh itemnya berdasarkan slug rahasia/unik. */

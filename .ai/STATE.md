@@ -1,5 +1,5 @@
 # STATE - Offroad Garut
-Diperbarui: 2026-08-24 oleh opencode (MAIN-COMBO)
+Diperbarui: 2026-08-29 oleh opencode (MAIN-COMBO)
 
 ## Ini apa
 Platform pemesanan B2C untuk wisata offroad Jeep di Garut. Next.js 15 App Router,
@@ -20,12 +20,12 @@ hasilnya ke branch `build-main` / `build-dev`; server hanya memasangnya.
 
 ## Berjalan
 - Produksi dan staging dua-duanya di branch masing-masing (`main` dan `dev`).
-- Komponen `CurrencyInput` dibuat untuk menangani input harga dalam format terformat IDR (berpemisah titik).
-- Input harga di master data add-on, paket tour, editor paket, dan servis jeep diperbarui menggunakan `CurrencyInput`.
+- Komponen `CurrencyInput` dibuat untuk menangani input harga dalam format terformat IDR.
+- Hero page headline & subheadline diperpesan lebih ringkas & fokus pada petualangan offroad Garut.
+- Seksi Galeri landing page dikembangkan menjadi bento grid dinamis yang berotasi otomatis (rolling photos) setiap x detik dan mengambil foto publik dari DB/Kelola Galeri Admin.
 
 ## Sedang dikerjakan
-- Penanganan Problem 1 selesai dan terverifikasi.
-- Menunggu instruksi untuk Problem 2 (sinkronisasi migrasi database).
+- Penanganan Hero & Galeri rolling grid selesai dan terverifikasi.
 
 ## Terhambat, butuh manusia
 - **Port MySQL 3306 masih terbuka ke seluruh internet.** Diverifikasi lagi
@@ -41,9 +41,7 @@ hasilnya ke branch `build-main` / `build-dev`; server hanya memasangnya.
 5. **Pulihkan build dengan satu perintah**: `.next-sebelumnya`.
 
 ## Baru saja disentuh
-- `src/components/ui/input.tsx` (ditambahkan `CurrencyInput`, `formatNumberInput`, `parseFormattedNumber`)
-- `src/components/admin/master-data/addons-manager.tsx`
-- `src/components/admin/master-data/packages-manager.tsx`
-- `src/components/admin/package-editor-client.tsx`
-- `src/components/admin/jeep-servis.tsx`
-- `src/test/currency-input.test.ts`
+- `src/components/landing/hero.tsx`
+- `src/components/landing/gallery.tsx`
+- `src/components/landing/gallery-grid-client.tsx`
+- `src/server/routers/gallery.ts`

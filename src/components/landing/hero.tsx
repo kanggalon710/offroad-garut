@@ -33,13 +33,12 @@ export function Hero() {
           {/* Kolom Kiri: Teks & Tombol */}
           <div className="lg:col-span-7">
             <h1 className="text-hero text-white sm:text-[3rem] lg:text-[3.25rem]">
-              Offroad Garut yang dipesan semudah tiket bioskop
+              Petualangan Offroad Garut
             </h1>
 
             <p className="mt-5 max-w-lg text-lg leading-relaxed text-white/90">
-              Pilih paket, bayar pakai QRIS atau e-wallet, tiket QR langsung
-              dikirim ke WhatsApp. Tidak perlu transfer manual atau menunggu
-              balasan chat sampai besok.
+              Jelajahi kebun teh & pegunungan Cikajang. Pesan instan, bayar via
+              QRIS/e-wallet, tiket QR langsung di WhatsApp.
             </p>
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
